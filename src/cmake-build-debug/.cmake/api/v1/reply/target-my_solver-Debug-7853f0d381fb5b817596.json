@@ -2,7 +2,7 @@
 	"artifacts" : 
 	[
 		{
-			"path" : "src"
+			"path" : "my_solver"
 		}
 	],
 	"backtrace" : 1,
@@ -10,7 +10,9 @@
 	{
 		"commands" : 
 		[
-			"add_executable"
+			"add_executable",
+			"target_link_libraries",
+			"target_include_directories"
 		],
 		"files" : 
 		[
@@ -24,7 +26,19 @@
 			{
 				"command" : 0,
 				"file" : 0,
-				"line" : 6,
+				"line" : 10,
+				"parent" : 0
+			},
+			{
+				"command" : 1,
+				"file" : 0,
+				"line" : 16,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 13,
 				"parent" : 0
 			}
 		]
@@ -36,6 +50,13 @@
 			[
 				{
 					"fragment" : "-g -std=gnu++20 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.5.sdk -fcolor-diagnostics"
+				}
+			],
+			"includes" : 
+			[
+				{
+					"backtrace" : 3,
+					"path" : "/Users/khyber/Documents/aiger-lib/aiger/include"
 				}
 			],
 			"language" : "CXX",
@@ -53,7 +74,7 @@
 			]
 		}
 	],
-	"id" : "src::@6890427a1f51a3e7e1df",
+	"id" : "my_solver::@6890427a1f51a3e7e1df",
 	"link" : 
 	{
 		"commandFragments" : 
@@ -65,12 +86,17 @@
 			{
 				"fragment" : "",
 				"role" : "flags"
+			},
+			{
+				"backtrace" : 2,
+				"fragment" : "/Users/khyber/Documents/aiger-lib/aiger/lib/libaiger.a",
+				"role" : "libraries"
 			}
 		],
 		"language" : "CXX"
 	},
-	"name" : "src",
-	"nameOnDisk" : "src",
+	"name" : "my_solver",
+	"nameOnDisk" : "my_solver",
 	"paths" : 
 	{
 		"build" : ".",

@@ -823,7 +823,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "src"
+			"value" : "my_solver"
 		},
 		{
 			"name" : "CMAKE_RANLIB",
@@ -1120,6 +1120,42 @@
 			],
 			"type" : "BOOL",
 			"value" : "FALSE"
+		},
+		{
+			"name" : "my_solver_BINARY_DIR",
+			"properties" : 
+			[
+				{
+					"name" : "HELPSTRING",
+					"value" : "Value Computed by CMake"
+				}
+			],
+			"type" : "STATIC",
+			"value" : "/Users/khyber/Documents/aig-solver/src/cmake-build-debug"
+		},
+		{
+			"name" : "my_solver_IS_TOP_LEVEL",
+			"properties" : 
+			[
+				{
+					"name" : "HELPSTRING",
+					"value" : "Value Computed by CMake"
+				}
+			],
+			"type" : "STATIC",
+			"value" : "ON"
+		},
+		{
+			"name" : "my_solver_SOURCE_DIR",
+			"properties" : 
+			[
+				{
+					"name" : "HELPSTRING",
+					"value" : "Value Computed by CMake"
+				}
+			],
+			"type" : "STATIC",
+			"value" : "/Users/khyber/Documents/aig-solver/src"
 		},
 		{
 			"name" : "src_BINARY_DIR",

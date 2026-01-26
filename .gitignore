@@ -39,3 +39,7 @@
 
 # debug information files
 *.dwo
+
+# Don't add temporary test .aag .aig files
+*.aag
+*.aig

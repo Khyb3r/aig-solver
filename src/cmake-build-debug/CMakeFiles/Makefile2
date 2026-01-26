@@ -63,7 +63,7 @@ CMAKE_BINARY_DIR = /Users/khyber/Documents/aig-solver/src/cmake-build-debug
 # Directory level rules for the build root directory
 
 # The main recursive "all" target.
-all: CMakeFiles/src.dir/all
+all: CMakeFiles/my_solver.dir/all
 .PHONY : all
 
 # The main recursive "preinstall" target.
@@ -71,34 +71,34 @@ preinstall:
 .PHONY : preinstall
 
 # The main recursive "clean" target.
-clean: CMakeFiles/src.dir/clean
+clean: CMakeFiles/my_solver.dir/clean
 .PHONY : clean
 
 #=============================================================================
-# Target rules for target CMakeFiles/src.dir
+# Target rules for target CMakeFiles/my_solver.dir
 
 # All Build rule for target.
-CMakeFiles/src.dir/all:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/src.dir/build.make CMakeFiles/src.dir/depend
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/src.dir/build.make CMakeFiles/src.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/khyber/Documents/aig-solver/src/cmake-build-debug/CMakeFiles --progress-num=1,2 "Built target src"
-.PHONY : CMakeFiles/src.dir/all
+CMakeFiles/my_solver.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/my_solver.dir/build.make CMakeFiles/my_solver.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/my_solver.dir/build.make CMakeFiles/my_solver.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/khyber/Documents/aig-solver/src/cmake-build-debug/CMakeFiles --progress-num=1,2 "Built target my_solver"
+.PHONY : CMakeFiles/my_solver.dir/all
 
 # Build rule for subdir invocation for target.
-CMakeFiles/src.dir/rule: cmake_check_build_system
+CMakeFiles/my_solver.dir/rule: cmake_check_build_system
 	$(CMAKE_COMMAND) -E cmake_progress_start /Users/khyber/Documents/aig-solver/src/cmake-build-debug/CMakeFiles 2
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/src.dir/all
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/my_solver.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /Users/khyber/Documents/aig-solver/src/cmake-build-debug/CMakeFiles 0
-.PHONY : CMakeFiles/src.dir/rule
+.PHONY : CMakeFiles/my_solver.dir/rule
 
 # Convenience name for target.
-src: CMakeFiles/src.dir/rule
-.PHONY : src
+my_solver: CMakeFiles/my_solver.dir/rule
+.PHONY : my_solver
 
 # clean rule for target.
-CMakeFiles/src.dir/clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/src.dir/build.make CMakeFiles/src.dir/clean
-.PHONY : CMakeFiles/src.dir/clean
+CMakeFiles/my_solver.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/my_solver.dir/build.make CMakeFiles/my_solver.dir/clean
+.PHONY : CMakeFiles/my_solver.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.

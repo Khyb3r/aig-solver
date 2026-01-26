@@ -27,7 +27,7 @@
 					[
 						0
 					],
-					"name" : "src",
+					"name" : "my_solver",
 					"targetIndexes" : 
 					[
 						0
@@ -38,9 +38,9 @@
 			[
 				{
 					"directoryIndex" : 0,
-					"id" : "src::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-src-Debug-c784cd802340e9a6f4fc.json",
-					"name" : "src",
+					"id" : "my_solver::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-my_solver-Debug-7853f0d381fb5b817596.json",
+					"name" : "my_solver",
 					"projectIndex" : 0
 				}
 			]

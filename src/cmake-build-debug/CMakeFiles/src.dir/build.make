@@ -92,6 +92,7 @@ src_EXTERNAL_OBJECTS =
 
 src: CMakeFiles/src.dir/main.cpp.o
 src: CMakeFiles/src.dir/build.make
+src: /Users/khyber/Documents/aiger-lib/aiger/lib/libaiger.a
 src: CMakeFiles/src.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Users/khyber/Documents/aig-solver/src/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking CXX executable src"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/src.dir/link.txt --verbose=$(VERBOSE)
