@@ -7,7 +7,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(AIGER_INCLUDE_DIR "/Users/khyber/Documents/aiger-lib/aiger/include")
 set(AIGER_LIB_DIR "/Users/khyber/Documents/aiger-lib/aiger/lib")
 
-add_executable(my_solver main.cpp)
+add_executable(my_solver main.cpp
+        aig.h)
 
 # Add Aiger headers
 target_include_directories(my_solver PRIVATE ${AIGER_INCLUDE_DIR})
