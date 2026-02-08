@@ -43,3 +43,9 @@
 # Don't add temporary test .aag .aig files
 *.aag
 *.aig
+
+# Cmake and IDE related
+.idea
+src/cmake-build-debug/
+src/.idea
+.DS_Store

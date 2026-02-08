@@ -7,13 +7,39 @@ extern "C" {
     #include "aiger.h"
 }
 
-void printInternalAIG(const Node* nodes_list[], const std::vector<Edge>& outputs) {
+
+void printInternalAIG(Node* nodes_list[], std::vector<Edge>& outputs, unsigned maxvar) {
+    for (int i = 1; i <= maxvar; i++) {
+        Node* n = nodes_list[i];
+        if (!n) continue;
+        std::cout << "Node " << i << ": type="
+             << (n->type == NodeType::INPUT ? "INPUT" : "AND") << "\n";
+
+        if (n->type == NodeType::AND) {
+            for (int j = 0; j < 2; j++) {
+                Edge& e = n->input_nodes[j];
+                std::cout << "  Input " << j << " -> Node " << e.node->variable_number
+                          << (e.inverted ? " (inverted)" : "") << "\n";
+            }
+        }
+    }
+
+    for (int i = 0; i < outputs.size(); i++) {
+        Edge& e = outputs[i];
+        std::cout << "Output " << i << " -> ";
+        if (e.node == nullptr) {
+            std::cout << (e.inverted ? "CONST 1" : "CONST 0");
+        } else {
+            std::cout << "Node " << e.node->variable_number;
+            if (e.inverted) std::cout << " (inverted)";
+        }
+        std::cout << '\n';
+    }
 
 }
-
 Edge edge_from_literal(unsigned literal, Node* nodes_list[]) {
     if (literal == 0) return {nullptr, false};
-    else if (literal == 1) return {nullptr, true};
+    if (literal == 1) return {nullptr, true};
     return {nodes_list[literal >> 1], (literal & 1) != 0};
 }
 
@@ -27,18 +53,13 @@ int main(int argc, char **argv) {
         aiger_reset(aig);
         return 1;
     }
-
     // Ensure no latches present (Script will manually unroll beforehand)
     if (aig->num_latches > 0) {
         std::cerr << "No latches allowed, unroll first";
         return 1;
     }
 
-    // Make sure we are correctly parsing the file
-    /*std::cout << "Inputs: " << aig->num_inputs << '\n';
-    std::cout << "Outputs: " << aig->num_outputs << '\n';
-    std::cout << "ANDs: " << aig->num_ands << '\n';
-    */
+    // Test to see we are printing all nodes from file correctly
     for (int i = 0; i < aig->num_inputs; i++) {
         unsigned variable_index = aig->inputs[i].lit / 2;
         std::cout << "Input Variables: " << variable_index << '\n';
@@ -48,11 +69,11 @@ int main(int argc, char **argv) {
         unsigned lhs_idx = a.lhs / 2;
         unsigned rhs_idx = a.rhs0 / 2;
         unsigned rhs_ix_2 = a.rhs1 / 2;
-        std::cout << lhs_idx << " = " << rhs_idx << " AND " << rhs_ix_2 << "\n";
+        std::cout << lhs_idx << " = " << rhs_idx << " AND " << rhs_ix_2 << "\n\n";
     }
 
-    Node* nodes_list[aig->maxvar + 2] = {nullptr};
 
+    Node* nodes_list[aig->maxvar + 2];
     // add input nodes to graph/circuit
     for (int i = 0; i < aig->num_inputs; i++) {
         const aiger_symbol& input_node = aig->inputs[i];
@@ -64,7 +85,6 @@ int main(int argc, char **argv) {
         nodes_list[index]->input_nodes[0] = {nullptr, false};
         nodes_list[index]->input_nodes[1] = {nullptr, false};
     }
-
     // add AND nodes to graph/circuit
     for (int i = 0; i < aig->num_ands; i++) {
         const aiger_and& and_node = aig->ands[i];
@@ -85,7 +105,6 @@ int main(int argc, char **argv) {
 
     // outputs
     std::vector<Edge> outputs;
-
     for (int i = 0; i < aig->num_outputs; i++) {
         unsigned index = aig->outputs[i].lit >> 1;
         bool inverted = (aig->outputs[i].lit & 1) != 0;
@@ -101,6 +120,17 @@ int main(int argc, char **argv) {
         }
         outputs.push_back(output);
     }
+
+    // print structure of AIG to ensure it is correct
+    printInternalAIG(nodes_list, outputs, aig->maxvar);
+
+
+
+
+
+
+
+
 
     aiger_reset(aig);
     return 0;
