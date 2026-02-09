@@ -14,9 +14,27 @@ public:
     std::vector<int> decision_level_boundary_indexes;
     std::queue<Node*> propogation_queue;
 
+    void run();
 
-    void propogate_forward(Node& a, Node& b);
-    void propogate_backward(Node &a);
+    Node* choose_node_to_decide();
+
+    // Introduce heuristics or some other method of deciding whether Node should be T/F
+    // Currently always assigns True
+    int decide_node_assignment(Node*);
+
+    void add_to_assignment_list(Node* a);
+
+    void update_current_decision_level_index();
+    void move_to_next_decision_level();
+
+    void update_propogation_queue(Node*);
+
+    void propogate_forward_helper(Node*);
+    void propogate_backward_helper(Node*);
+    void propogate(Node*);
+
+    void propogated_node_reason_assignment(Node*);
+
 };
 
 

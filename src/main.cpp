@@ -2,6 +2,8 @@
 #include <complex>
 #include <iostream>
 #include "aig.h"
+#include "Solver.h"
+
 // import aiger library - use extern C to disable name mangling
 extern "C" {
     #include "aiger.h"
@@ -125,12 +127,25 @@ int main(int argc, char **argv) {
     printInternalAIG(nodes_list, outputs, aig->maxvar);
 
 
+    // flow of what is to occur in algorithm
+    // assign a value for a node
+    Solver solver{};
+    solver.nodes_list = nodes_list;
+    solver.output_nodes = outputs;
+
+    Node& test_node = *nodes_list[0];
+    test_node.assignment = Assignment::TRUE;
+    test_node.decision_level = 0;
+
+    solver.assignment_list.push_back(&test_node);
+    solver.decision_level_boundary_indexes.at(test_node.decision_level)++;
+    solver.propogation_queue.push(&test_node);
 
 
+    // Node A (l : 1)
+    // Node B (l : 1)
 
-
-
-
+    // [2, 3, 4, 5]
 
     aiger_reset(aig);
     return 0;
