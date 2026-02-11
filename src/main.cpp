@@ -24,7 +24,14 @@ void printInternalAIG(Node* nodes_list[], std::vector<Edge>& outputs, unsigned m
                           << (e.inverted ? " (inverted)" : "") << "\n";
             }
         }
+
+        if (n->output_nodes.size() <= 0) continue;
+        std::cout << "Outputs for this node: " << '\n';
+        for (int k = 0; k <  n->output_nodes.size(); k++) {
+            std::cout << "Node: " << n->output_nodes[k]->variable_number << '\n';
+        }
     }
+
 
     for (int i = 0; i < outputs.size(); i++) {
         Edge& e = outputs[i];
@@ -98,11 +105,16 @@ int main(int argc, char **argv) {
         nodes_list[index]->variable_number = index;
 
         // Ensure variables exist
-        if (and_node.rhs0 > 0) assert(nodes_list[and_node.rhs1 >> 1] != nullptr);
-        if (and_node.rhs1 > 0) assert(nodes_list[and_node.rhs0 >> 1] != nullptr);
+        if (and_node.rhs0 > 0) assert(nodes_list[and_node.rhs0 >> 1] != nullptr);
+        if (and_node.rhs1 > 0) assert(nodes_list[and_node.rhs1 >> 1] != nullptr);
 
         nodes_list[index]->input_nodes[0] = edge_from_literal(and_node.rhs0, nodes_list);
         nodes_list[index]->input_nodes[1] = edge_from_literal(and_node.rhs1, nodes_list);
+
+        if (nodes_list[index]->input_nodes[0].node != nullptr)
+            nodes_list[index]->input_nodes[0].node->output_nodes.push_back(nodes_list[index]);
+        if (nodes_list[index]->input_nodes[1].node != nullptr)
+            nodes_list[index]->input_nodes[1].node->output_nodes.push_back(nodes_list[index]);
     }
 
     // outputs
@@ -127,27 +139,30 @@ int main(int argc, char **argv) {
     printInternalAIG(nodes_list, outputs, aig->maxvar);
 
 
-    // flow of what is to occur in algorithm
-    // assign a value for a node
-    Solver solver{};
-    solver.nodes_list = nodes_list;
-    solver.output_nodes = outputs;
 
-    Node& test_node = *nodes_list[0];
-    test_node.assignment = Assignment::TRUE;
-    test_node.decision_level = 0;
-
-    solver.assignment_list.push_back(&test_node);
-    solver.decision_level_boundary_indexes.at(test_node.decision_level)++;
-    solver.propogation_queue.push(&test_node);
-
-
-    // Node A (l : 1)
-    // Node B (l : 1)
-
-    // [2, 3, 4, 5]
 
     aiger_reset(aig);
     return 0;
 
 }
+
+
+/* flow of what is to occur in algorithm
+// assign a value for a node
+Solver solver{};
+solver.nodes_list = nodes_list;
+solver.output_nodes = outputs;
+
+Node& test_node = *nodes_list[0];
+test_node.assignment = Assignment::TRUE;
+test_node.decision_level = 0;
+
+solver.assignment_list.push_back(&test_node);
+solver.decision_level_boundary_indexes.at(test_node.decision_level)++;
+solver.propogation_queue.push(&test_node);
+
+
+// Node A (l : 1)
+// Node B (l : 1)
+
+// [2, 3, 4, 5]*/

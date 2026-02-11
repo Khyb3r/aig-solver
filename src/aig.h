@@ -20,7 +20,7 @@ struct Node {
     unsigned int decision_level = 0;                // 4 bytes
     Node* reason = nullptr;                         // 8 bytes
 
-    std::vector<Node*> fanoutput_nodes;             // 16 bytes
+    std::vector<Node*> output_nodes;             // 16 bytes
 };
 
 #endif //AIG_H

@@ -12,7 +12,7 @@ public:
     std::vector<Edge> output_nodes;
     std::vector<Node*> assignment_list;
     std::vector<int> decision_level_boundary_indexes;
-    std::queue<Node*> propogation_queue;
+    std::queue<Node*> propagation_queue;
 
     void run();
 
@@ -20,11 +20,10 @@ public:
 
     // Introduce heuristics or some other method of deciding whether Node should be T/F
     // Currently always assigns True
-    int decide_node_assignment(Node*);
+    void decide_node_assignment(Node*);
 
     void add_to_assignment_list(Node* a);
 
-    void update_current_decision_level_index();
     void move_to_next_decision_level();
 
     void update_propogation_queue(Node*);
