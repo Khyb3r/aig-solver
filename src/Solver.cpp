@@ -14,7 +14,9 @@ void Solver::run() {
         add_to_assignment_list(curr_node);
         update_propogation_queue(curr_node);
         while (!propagation_queue.empty() || !conflict) {
-            propogate(curr_node);
+            Node& n = *propagation_queue.front();
+            propagation_queue.pop();
+            propogate(&n);
         }
     }
 
@@ -39,7 +41,6 @@ void Solver::add_to_assignment_list(Node *a) {
 
 void Solver::move_to_next_decision_level() {
     decision_level_boundary_indexes.push_back(assignment_list.size() - 1);
-    //decision_level_boundary_indexes.push_back(decision_level_boundary_indexes[decision_level_boundary_indexes.size() - 1] + 1);
 }
 
 void Solver::update_propogation_queue(Node* a) {
@@ -47,21 +48,62 @@ void Solver::update_propogation_queue(Node* a) {
 }
 
 void Solver::propogate(Node* a) {
-    propogated_node_reason_assignment(a);
     if (a->type == NodeType::AND) {
-        // backprop first
+        // backprop and forward prop
         propogate_backward_helper(a);
         propogate_forward_helper(a);
         return;
     }
+    // forward prop only
     propogate_forward_helper(a);
 
 }
 
 void Solver::propogate_forward_helper(Node *a) {
     for (int i = 0; i < a->output_nodes.size(); i++) {
-        assignment_list.push_back(a->output_nodes[i]);
+        // Current node output
+        Node& n = a->output_nodes[i];
+        // If already assigned skip
+        if (n.assignment != Assignment::UNASSIGNED) continue;
+        // Output node is an AND node
+        if (n.type == NodeType::AND) {
+            // Inputs to our output node, one of them will be us
+            Edge& curr_node_edge = n.input_nodes[0];
+            Edge& other_input = n.input_nodes[1];
+
+            if (n.input_nodes[1].node == a) {
+                curr_node_edge = n.input_nodes[1];
+                other_input = n.input_nodes[0];
+            }
+
+            // If we are FALSE, Propagate out that our AND gate is false
+            if ((curr_node_edge.inverted && a->assignment == Assignment::TRUE) ||
+                !curr_node_edge.inverted && a->assignment == Assignment::FALSE) {
+                n.assignment = Assignment::FALSE;
+            }
+
+            // Propagate if other input is FALSE, so AND is a FALSE
+            if (other_input.node->assignment == Assignment::TRUE &&
+                other_input.inverted) {
+                n.assignment = Assignment::FALSE;
+                assignment_list.push_back(other_input.node);
+                propagation_queue.push(other_input.node);
+            }
+            else if (other_input.node->assignment == Assignment::FALSE &&
+                !other_input.inverted) {
+                n.assignment = Assignment::FALSE;
+                assignment_list.push_back(other_input.node);
+                propagation_queue.push(other_input.node);
+            }
+
+            // add to assignments list
+            assignment_list.push_back(&n);
+            propagation_queue.push(&n);
+
+        }
+
     }
+
 }
 
 void Solver::propogate_backward_helper(Node *a) {
