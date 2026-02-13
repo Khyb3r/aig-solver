@@ -81,9 +81,9 @@ void Solver::propogate_forward_helper(Node *a) {
                     output.assignment = Assignment::FALSE;
                     assignment_list.push_back(&output);
                     propagation_queue.push(&output);
+                    output.reason = a;
                 }
-                else if (output.assignment == Assignment::TRUE) {} // conflict
-                else {} // do nothing
+                else if (output.assignment == Assignment::TRUE) {return;} // conflict
             }
 
             else if (((a->assignment == Assignment::TRUE && !curr_node_edge->inverted) ||
@@ -95,9 +95,9 @@ void Solver::propogate_forward_helper(Node *a) {
                     output.assignment = Assignment::TRUE;
                     assignment_list.push_back(&output);
                     propagation_queue.push(&output);
+                    output.reason = a;
                 }
-                else if (output.assignment == Assignment::FALSE) {} // conflict
-                else {} // do nothing
+                else if (output.assignment == Assignment::FALSE) {return;} // conflict
             }
         }
     }
@@ -109,8 +109,10 @@ void Solver::propogate_backward_helper(Node *curr) {
     Edge& first_input = curr->input_nodes[0];
     Edge& second_input = curr->input_nodes[1];
 
-    bool first_input_true = true;
-    bool second_input_true = true;
+    bool first_input_assigned = first_input.node->assignment != Assignment::UNASSIGNED;
+    bool second_input_assigned = second_input.node->assignment != Assignment::UNASSIGNED;
+    bool first_input_true = false;
+    bool second_input_true = false;
     if (first_input.node->assignment != Assignment::UNASSIGNED)
         first_input_true = (first_input.node->assignment == Assignment::TRUE) ^ first_input.inverted;
     if (second_input.node->assignment != Assignment::UNASSIGNED)
@@ -119,22 +121,25 @@ void Solver::propogate_backward_helper(Node *curr) {
 
     // AND being TRUE
     if (curr->assignment == Assignment::TRUE) {
-
+        // If First Unassigned set to True otherwise conflict if set to False
         if (first_input.node->assignment == Assignment::UNASSIGNED) {
             first_input.node->assignment = first_input.inverted ? Assignment::FALSE : Assignment::TRUE;
             assignment_list.push_back(first_input.node);
             propagation_queue.push(first_input.node);
+            first_input.node->reason = curr;
         }
-        else if (!first_input_true) {
+        else if (!first_input_true && first_input_assigned) {
             // conflict
         }
 
+        // If Second Unassigned set to True otherwise conflict if set to True
         if (second_input.node->assignment == Assignment::UNASSIGNED) {
             second_input.node->assignment = second_input.inverted ? Assignment::FALSE : Assignment::TRUE;
             assignment_list.push_back(second_input.node);
             propagation_queue.push(second_input.node);
+            second_input.node->reason = curr;
         }
-        else if (!second_input_true) {
+        else if (!second_input_true && second_input_assigned) {
             // conflict
         }
     }
@@ -142,33 +147,34 @@ void Solver::propogate_backward_helper(Node *curr) {
     else if (curr->assignment == Assignment::FALSE) {
         //  If one gate is True make other False
         if (first_input.node->assignment != Assignment::UNASSIGNED && second_input.node->assignment != Assignment::UNASSIGNED) {
-            if (first_input_true && second_input_true) {
+            if (first_input_true && first_input_assigned && second_input_true && second_input_assigned) {
                 // conflict
             }
         }
 
         if (first_input.node->assignment == Assignment::UNASSIGNED) {
-            if (second_input_true) {
+            if (second_input_true && second_input_assigned) {
                 first_input.node->assignment = first_input.inverted ? Assignment::TRUE : Assignment::FALSE;
                 assignment_list.push_back(first_input.node);
                 propagation_queue.push(first_input.node);
+                first_input.node->reason = curr;
             }
         }
 
         if (second_input.node->assignment == Assignment::UNASSIGNED) {
-            if (first_input_true) {
+            if (first_input_true && first_input_assigned) {
                 second_input.node->assignment = second_input.inverted ? Assignment::TRUE : Assignment::FALSE;
                 assignment_list.push_back(second_input.node);
                 propagation_queue.push(second_input.node);
+                second_input.node->reason = curr;
             }
         }
     }
 }
 
-void Solver::propogated_node_reason_assignment(Node* a) {
-    // pre popping store prev node as reason
-    assignment_list.push_back(a);
-    // Add reason
-    a->reason = assignment_list[assignment_list.size() - 2];
-    propagation_queue.push(a);
+void Solver::conflict_handler() {
+    // Create Implication Graph
+    // Understand reason for the conflict
+    // Add to clause DB
+    // Purge assigment list back to last decision level --> Backjump
 }

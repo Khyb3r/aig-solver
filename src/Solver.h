@@ -32,7 +32,7 @@ public:
     void propogate_backward_helper(Node*);
     void propogate(Node*);
 
-    void propogated_node_reason_assignment(Node*);
+    void conflict_handler();
 
 };
 
