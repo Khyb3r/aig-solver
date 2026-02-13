@@ -165,4 +165,84 @@ solver.propogation_queue.push(&test_node);
 // Node A (l : 1)
 // Node B (l : 1)
 
-// [2, 3, 4, 5]*/
+// [2, 3, 4, 5]
+
+
+PROPAGATION RULES
+
+            // Cover entire truth table
+            // F AND F = F
+            // F AND T = F
+            // T AND F = F
+            // T AND T = T
+
+            if (other_input->node->assignment == Assignment::UNASSIGNED && output.assignment == Assignment::UNASSIGNED) {
+                // Only thing we can propagate if F AND F = F
+                if (a->assignment == Assignment::TRUE && !curr_node_edge->inverted ||
+                    a->assignment == Assignment::FALSE && curr_node_edge->inverted) {
+                    output.assignment = Assignment::FALSE;
+                    assignment_list.push_back(&output);
+                    propagation_queue.push(&output);
+                }
+            }
+
+            else if (other_input->node->assignment != Assignment::UNASSIGNED) {
+                // F AND (T || F) = F
+                // If we are FALSE, Propagate out that our AND gate is false
+                if ((curr_node_edge->inverted && a->assignment == Assignment::TRUE) ||
+                    !curr_node_edge->inverted && a->assignment == Assignment::FALSE) {
+                    output.assignment = Assignment::FALSE;
+                    assignment_list.push_back(&output);
+                    propagation_queue.push(&output);
+                    }
+
+                // (T || F) AND F = F
+                // Propagate if other input is FALSE, so AND is a FALSE
+                else if ((other_input->node->assignment == Assignment::TRUE && other_input->inverted) ||
+                    other_input->node->assignment == Assignment::FALSE && !other_input->inverted) {
+                    if (output.assignment == Assignment::UNASSIGNED) {
+                        output.assignment = Assignment::FALSE;
+                        assignment_list.push_back(&output);
+                        propagation_queue.push(&output);
+                    }
+                    else if (output.assignment == Assignment::TRUE) {}// conflict
+                    else {} // skip
+
+                    }
+
+                // T AND T = T
+                // If we are True, and other input Gate is True, AND must be true
+                else if (((curr_node_edge->inverted && a->assignment == Assignment::FALSE) ||
+                    (!curr_node_edge->inverted && a->assignment == Assignment::TRUE))
+                    && ((other_input->inverted && other_input->node->assignment == Assignment::FALSE) ||
+                    (!other_input->inverted && other_input->node->assignment == Assignment::TRUE))) {
+
+                    if (output.assignment == Assignment::UNASSIGNED) {}
+
+                    output.assignment = Assignment::TRUE;
+                    assignment_list.push_back(&output);
+                    propagation_queue.push(&output);
+                    }
+            }
+
+            else if (output.assignment != Assignment::UNASSIGNED) {
+                // T AND ? = F
+                // T AND ? = T
+                if ((a->assignment == Assignment::TRUE && !curr_node_edge->inverted ||
+                    a->assignment == Assignment::FALSE && curr_node_edge->inverted) &&
+                    (output.assignment == Assignment::FALSE)) {
+                    if (other_input->inverted) other_input->node->assignment = Assignment::TRUE;
+                    else other_input->node->assignment = Assignment::FALSE;
+                }
+
+                if ((a->assignment == Assignment::TRUE && !curr_node_edge->inverted ||
+                    a->assignment == Assignment::FALSE && curr_node_edge->inverted) &&
+                    (output.assignment == Assignment::TRUE)) {
+                    if (other_input->inverted) other_input->node->assignment = Assignment::FALSE;
+                    else other_input->node->assignment = Assignment::TRUE;
+                }
+            }
+
+            else {continue;}
+
+*/

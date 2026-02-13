@@ -13,7 +13,7 @@ void Solver::run() {
         decide_node_assignment(curr_node);
         add_to_assignment_list(curr_node);
         update_propogation_queue(curr_node);
-        while (!propagation_queue.empty() || !conflict) {
+        while (!propagation_queue.empty() && !conflict) {
             Node& n = *propagation_queue.front();
             propagation_queue.pop();
             propogate(&n);
@@ -62,69 +62,143 @@ void Solver::propogate(Node* a) {
 void Solver::propogate_forward_helper(Node *a) {
     for (int i = 0; i < a->output_nodes.size(); i++) {
         // Current node output
-        Node& n = a->output_nodes[i];
-        // If already assigned skip
-        if (n.assignment != Assignment::UNASSIGNED) continue;
+        Node& output = a->output_nodes[i];
         // Output node is an AND node
-        if (n.type == NodeType::AND) {
+        if (output.type == NodeType::AND) {
             // Inputs to our output node, one of them will be us
-            Edge& curr_node_edge = n.input_nodes[0];
-            Edge& other_input = n.input_nodes[1];
+            Edge* curr_node_edge = &output.input_nodes[0];
+            Edge* other_input = &output.input_nodes[1];
 
-            if (n.input_nodes[1].node == a) {
-                curr_node_edge = n.input_nodes[1];
-                other_input = n.input_nodes[0];
+            if (output.input_nodes[1].node == a) {
+                curr_node_edge = &output.input_nodes[1];
+                other_input = &output.input_nodes[0];
             }
 
-            // If we are FALSE, Propagate out that our AND gate is false
-            if ((curr_node_edge.inverted && a->assignment == Assignment::TRUE) ||
-                !curr_node_edge.inverted && a->assignment == Assignment::FALSE) {
-                n.assignment = Assignment::FALSE;
+
+            if (((a->assignment == Assignment::FALSE && !curr_node_edge->inverted) ||
+                (a->assignment == Assignment::TRUE && curr_node_edge->inverted))) {
+                if (output.assignment == Assignment::UNASSIGNED) {
+                    output.assignment = Assignment::FALSE;
+                    assignment_list.push_back(&output);
+                    propagation_queue.push(&output);
+                }
+                else if (output.assignment == Assignment::TRUE) {} // conflict
+                else {} // do nothing
             }
 
-            // Propagate if other input is FALSE, so AND is a FALSE
-            if (other_input.node->assignment == Assignment::TRUE &&
-                other_input.inverted) {
-                n.assignment = Assignment::FALSE;
-                assignment_list.push_back(other_input.node);
-                propagation_queue.push(other_input.node);
-            }
-            else if (other_input.node->assignment == Assignment::FALSE &&
-                !other_input.inverted) {
-                n.assignment = Assignment::FALSE;
-                assignment_list.push_back(other_input.node);
-                propagation_queue.push(other_input.node);
-            }
+            else if (((a->assignment == Assignment::TRUE && !curr_node_edge->inverted) ||
+                (a->assignment == Assignment::FALSE && curr_node_edge->inverted)) &&
+                ((other_input->node->assignment == Assignment::TRUE && !other_input->inverted)  ||
+                (other_input->node->assignment == Assignment::FALSE && other_input->inverted))) {
 
-            // add to assignments list
-            assignment_list.push_back(&n);
-            propagation_queue.push(&n);
-
+                if (output.assignment == Assignment::UNASSIGNED) {
+                    output.assignment = Assignment::TRUE;
+                    assignment_list.push_back(&output);
+                    propagation_queue.push(&output);
+                }
+                else if (output.assignment == Assignment::FALSE) {} // conflict
+                else {} // do nothing
+            }
         }
-
     }
-
 }
 
-void Solver::propogate_backward_helper(Node *a) {
-    Edge& first_input = a->input_nodes[0];
-    Edge& second_input = a->input_nodes[1];
+void Solver::propogate_backward_helper(Node *curr) {
+    if (curr->type != NodeType::AND) return;
 
-    if (a->assignment == Assignment::TRUE) {
-        if (first_input.inverted)
-            first_input.node->assignment = Assignment::FALSE;
-        else
-            first_input.node->assignment = Assignment::TRUE;
+    Edge& first_input = curr->input_nodes[0];
+    Edge& second_input = curr->input_nodes[1];
 
-        if (second_input.inverted)
-            second_input.node->assignment = Assignment::FALSE;
-        else
-            second_input.node->assignment = Assignment::TRUE;
+    // AND being TRUE
+    if (curr->assignment == Assignment::TRUE) {
+        // Either is Unassigned
+        if (first_input.node->assignment == Assignment::UNASSIGNED || second_input.node->assignment == Assignment::UNASSIGNED) {
+            if (first_input.node->assignment == Assignment::UNASSIGNED) {
+                if (first_input.inverted) first_input.node->assignment = Assignment::FALSE;
+                else first_input.node->assignment = Assignment::TRUE;
+                propagation_queue.push(first_input.node);
+            }
 
+            if (second_input.node->assignment == Assignment::UNASSIGNED) {
+                if (second_input.inverted) second_input.node->assignment = Assignment::FALSE;
+                else second_input.node->assignment = Assignment::TRUE;
+            }
+        }
+
+        // First Input is FALSE
+        else if (first_input.node->assignment == Assignment::TRUE && first_input.inverted ||
+            first_input.node->assignment == Assignment::FALSE && !first_input.inverted) {
+            // conflict
+        }
+
+        // Second input is FALSE
+        else if (second_input.node->assignment == Assignment::FALSE && !second_input.inverted ||
+            second_input.node->assignment == Assignment::TRUE && second_input.inverted) {
+            // conflict
+        }
+
+        // First Input is TRUE
+        else if ((first_input.node->assignment == Assignment::TRUE && !first_input.inverted) ||
+            (first_input.node->assignment == Assignment::FALSE && first_input.inverted)) {
+
+            if (second_input.node->assignment == Assignment::UNASSIGNED) {
+                if (second_input.inverted) second_input.node->assignment = Assignment::FALSE;
+                else second_input.node->assignment = Assignment::TRUE;
+                assignment_list.push_back(second_input.node);
+                propagation_queue.push(second_input.node);
+            }
+
+            else if ((second_input.node->assignment == Assignment::FALSE && second_input.inverted) ||
+                (second_input.node->assignment == Assignment::FALSE && !second_input.inverted)) {
+                // conflict
+            }
+        }
+        // Second Input is TRUE
+        else if ((second_input.node->assignment == Assignment::TRUE && !second_input.inverted) ||
+            (second_input.node->assignment == Assignment::FALSE && second_input.inverted)) {
+
+            if (first_input.node->assignment == Assignment::UNASSIGNED) {
+                if (first_input.inverted) first_input.node->assignment = Assignment::FALSE;
+                else first_input.node->assignment = Assignment::TRUE;
+                assignment_list.push_back(first_input.node);
+                propagation_queue.push(first_input.node);
+            }
+
+            else if ((first_input.node->assignment == Assignment::FALSE && first_input.inverted) ||
+                (first_input.node->assignment == Assignment::FALSE && !first_input.inverted)) {
+                // conflict
+            }
+        }
     }
-    else if (a->assignment == Assignment::FALSE) {
-        // Decide which should be false or true can be one or the other
 
+    else if (curr->assignment == Assignment::FALSE) {
+        if (((first_input.node->assignment == Assignment::TRUE && !first_input.inverted) ||
+            (first_input.node->assignment == Assignment::FALSE && first_input.inverted)) &&
+            (second_input.node->assignment == Assignment::TRUE && !second_input.inverted) ||
+            (second_input.node->assignment == Assignment::FALSE && second_input.inverted)) {
+            // conflict both are TRUE when FALSE
+        }
+
+        // First True, Second should be False
+        else if ((first_input.node->assignment == Assignment::TRUE && !first_input.inverted) ||
+            (first_input.node->assignment == Assignment::FALSE && first_input.inverted)) {
+                if (second_input.node->assignment == Assignment::UNASSIGNED) {
+                    if (second_input.inverted) second_input.node->assignment = Assignment::TRUE;
+                    else second_input.node->assignment = Assignment::FALSE;
+                    assignment_list.push_back(second_input.node);
+                    propagation_queue.push(second_input.node);
+                }
+        }
+        // Second True, First should be False
+        else if ((second_input.node->assignment == Assignment::TRUE && !second_input.inverted) ||
+            (second_input.node->assignment == Assignment::FALSE && second_input.inverted)) {
+                if (first_input.node->assignment == Assignment::UNASSIGNED) {
+                    if (first_input.inverted) first_input.node->assignment = Assignment::TRUE;
+                    else first_input.node->assignment = Assignment::FALSE;
+                    assignment_list.push_back(first_input.node);
+                    propagation_queue.push(first_input.node);
+                }
+        }
     }
 }
 
