@@ -19,8 +19,18 @@ struct Node {
     Assignment assignment = Assignment::UNASSIGNED; // 4 bytes
     unsigned int decision_level = 0;                // 4 bytes
     Node* reason = nullptr;                         // 8 bytes
+    Node* reason_two = nullptr;                       // 8 bytes
 
     std::vector<Node*> output_nodes;             // 16 bytes
+};
+
+struct Literal {
+    Node* node;
+    bool is_negated;
+};
+
+struct ConflictReason {
+    std::vector<Literal*> nodes_involved;
 };
 
 #endif //AIG_H

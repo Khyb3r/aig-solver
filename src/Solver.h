@@ -13,6 +13,7 @@ public:
     std::vector<Node*> assignment_list;
     std::vector<int> decision_level_boundary_indexes;
     std::queue<Node*> propagation_queue;
+    std::vector<Node*> clause_db;
 
     void run();
 
@@ -32,7 +33,9 @@ public:
     void propogate_backward_helper(Node*);
     void propogate(Node*);
 
-    void conflict_handler();
+    void conflict_handler(Node*);
+
+
 
 };
 

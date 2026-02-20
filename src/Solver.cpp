@@ -1,4 +1,6 @@
 #include "Solver.h"
+#include <set>
+#include <stack>
 
 void Solver::run() {
     // choose a node to decide
@@ -74,7 +76,7 @@ void Solver::propogate_forward_helper(Node *a) {
                 other_input = &output.input_nodes[0];
             }
 
-
+            // A (FALSE) AND ? = OUTPUT (FALSE)
             if (((a->assignment == Assignment::FALSE && !curr_node_edge->inverted) ||
                 (a->assignment == Assignment::TRUE && curr_node_edge->inverted))) {
                 if (output.assignment == Assignment::UNASSIGNED) {
@@ -83,9 +85,13 @@ void Solver::propogate_forward_helper(Node *a) {
                     propagation_queue.push(&output);
                     output.reason = a;
                 }
-                else if (output.assignment == Assignment::TRUE) {return;} // conflict
+                else if (output.assignment == Assignment::TRUE) {
+                    // conflict
+                    conflict_handler(&output);
+                }
             }
 
+            // A (TRUE) AND B (TRUE) = OUT (TRUE)
             else if (((a->assignment == Assignment::TRUE && !curr_node_edge->inverted) ||
                 (a->assignment == Assignment::FALSE && curr_node_edge->inverted)) &&
                 ((other_input->node->assignment == Assignment::TRUE && !other_input->inverted)  ||
@@ -96,8 +102,12 @@ void Solver::propogate_forward_helper(Node *a) {
                     assignment_list.push_back(&output);
                     propagation_queue.push(&output);
                     output.reason = a;
+                    output.reason_two = other_input->node;
                 }
-                else if (output.assignment == Assignment::FALSE) {return;} // conflict
+                else if (output.assignment == Assignment::FALSE) {
+                    // conflict
+                    conflict_handler(&output);
+                }
             }
         }
     }
@@ -120,6 +130,7 @@ void Solver::propogate_backward_helper(Node *curr) {
 
 
     // AND being TRUE
+    // OUT (TRUE) = A (TRUE) AND B (TRUE)
     if (curr->assignment == Assignment::TRUE) {
         // If First Unassigned set to True otherwise conflict if set to False
         if (first_input.node->assignment == Assignment::UNASSIGNED) {
@@ -128,8 +139,10 @@ void Solver::propogate_backward_helper(Node *curr) {
             propagation_queue.push(first_input.node);
             first_input.node->reason = curr;
         }
+
         else if (!first_input_true && first_input_assigned) {
             // conflict
+            conflict_handler(first_input.node);
         }
 
         // If Second Unassigned set to True otherwise conflict if set to True
@@ -141,14 +154,18 @@ void Solver::propogate_backward_helper(Node *curr) {
         }
         else if (!second_input_true && second_input_assigned) {
             // conflict
+            conflict_handler(second_input.node);
         }
     }
 
+
+    // OUT (FALSE) = A (T/F) AND B (T/F)
     else if (curr->assignment == Assignment::FALSE) {
         //  If one gate is True make other False
         if (first_input.node->assignment != Assignment::UNASSIGNED && second_input.node->assignment != Assignment::UNASSIGNED) {
             if (first_input_true && first_input_assigned && second_input_true && second_input_assigned) {
                 // conflict
+                conflict_handler(curr);
             }
         }
 
@@ -158,6 +175,7 @@ void Solver::propogate_backward_helper(Node *curr) {
                 assignment_list.push_back(first_input.node);
                 propagation_queue.push(first_input.node);
                 first_input.node->reason = curr;
+                first_input.node->reason_two = second_input.node;
             }
         }
 
@@ -167,14 +185,48 @@ void Solver::propogate_backward_helper(Node *curr) {
                 assignment_list.push_back(second_input.node);
                 propagation_queue.push(second_input.node);
                 second_input.node->reason = curr;
+                second_input.node->reason_two = first_input.node;
             }
         }
     }
 }
 
-void Solver::conflict_handler() {
+void Solver::conflict_handler(Node* conflict_node) {
+    // Move up graph from current node using reason pointers till last decision (no reason)
+    std::set<Node*> visited_nodes;
+    std::stack<Node*> nodes_stack;
+    unsigned int current_nodes_counted = (conflict_node->decision_level == decision_level_boundary_indexes.back()) ? 1 : 0;
+    nodes_stack.push(conflict_node);
+    Node* uip = nullptr;
+    do {
+        Node* curr = nodes_stack.top();
+        nodes_stack.pop();
+        visited_nodes.insert(curr);
+        uip = curr;
+        if (curr->decision_level == decision_level_boundary_indexes.back()) {
+            current_nodes_counted--;
+            if (current_nodes_counted == 1 && uip == nullptr) uip = curr;
+        }
+
+        if (curr->reason != nullptr && !visited_nodes.contains(curr->reason)
+            && curr->reason->decision_level == conflict_node->decision_level) {
+            nodes_stack.push(curr->reason);
+            current_nodes_counted++;
+        }
+        if (curr->reason_two != nullptr && !visited_nodes.contains(curr->reason_two)
+            && curr->reason_two->decision_level == conflict_node->decision_level) {
+            nodes_stack.push(curr->reason_two);
+            current_nodes_counted++;
+        }
+    }
+    while (current_nodes_counted > 1 && !nodes_stack.empty());
+
+    // Detect conflict
     // Create Implication Graph
-    // Understand reason for the conflict
-    // Add to clause DB
-    // Purge assigment list back to last decision level --> Backjump
+    // Analyse conflict  (Cut/UIP)
+    // Generate learned constraint and Store in some manner not to do this again?
+    // Get the backjump level
+    // Undo assignments /  Purge assigment list back to last decision level --> Backjump
+    // Add learned clause
+    // Resume propagation
 }
