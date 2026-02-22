@@ -7,7 +7,7 @@ void Solver::run() {
     // make a decision
     // add to assignment list, add to propogation queue
     // keep propogating until queue is empty or conflict found -> repeat step above and this again and again
-
+    solver_decision_level = 0;
     bool satisfiable = false;
     bool conflict = false;
     while (!satisfiable) {
@@ -88,6 +88,7 @@ void Solver::propogate_forward_helper(Node *a) {
                 else if (output.assignment == Assignment::TRUE) {
                     // conflict
                     conflict_handler(&output);
+                    return;
                 }
             }
 
@@ -107,6 +108,7 @@ void Solver::propogate_forward_helper(Node *a) {
                 else if (output.assignment == Assignment::FALSE) {
                     // conflict
                     conflict_handler(&output);
+                    return;
                 }
             }
         }
@@ -143,6 +145,7 @@ void Solver::propogate_backward_helper(Node *curr) {
         else if (!first_input_true && first_input_assigned) {
             // conflict
             conflict_handler(first_input.node);
+            return;
         }
 
         // If Second Unassigned set to True otherwise conflict if set to True
@@ -155,6 +158,7 @@ void Solver::propogate_backward_helper(Node *curr) {
         else if (!second_input_true && second_input_assigned) {
             // conflict
             conflict_handler(second_input.node);
+            return;
         }
     }
 
@@ -166,6 +170,7 @@ void Solver::propogate_backward_helper(Node *curr) {
             if (first_input_true && first_input_assigned && second_input_true && second_input_assigned) {
                 // conflict
                 conflict_handler(curr);
+                return;
             }
         }
 
@@ -267,4 +272,32 @@ void Solver::conflict_handler(Node* conflict_node) {
     }
     // Add clause to database
     clause_db.push_back(clause);
+    backjump(backjump_level);
+    propogate_learned_clause_if_unit(clause_db.back());
+
+}
+
+
+void Solver::backjump(unsigned int backjump_level) {
+    int decision_level_for_backjump = decision_level_boundary_indexes[backjump_level];
+
+    for (int i = decision_level_for_backjump+1; i < assignment_list.size(); i++) {
+        Node* curr_node = assignment_list[i];
+        curr_node->assignment = Assignment::UNASSIGNED;
+        curr_node->decision_level = 0;
+        curr_node->reason = nullptr;
+        curr_node->reason_two = nullptr;
+    }
+    assignment_list.erase(assignment_list.begin() + decision_level_for_backjump+1, assignment_list.end());
+    decision_level_boundary_indexes.erase(decision_level_boundary_indexes.begin() + backjump_level+1, decision_level_boundary_indexes.end());
+    while (!propagation_queue.empty()) {
+        propagation_queue.pop();
+    }
+    solver_decision_level = backjump_level;
+}
+
+void Solver::propogate_learned_clause_if_unit(Clause &clause) {
+    for (int i = 0; i < clause.literals.size(); i++) {
+
+    }
 }

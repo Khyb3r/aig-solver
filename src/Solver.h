@@ -14,7 +14,7 @@ public:
     std::vector<int> decision_level_boundary_indexes;
     std::queue<Node*> propagation_queue;
     std::vector<Clause> clause_db;
-
+    int solver_decision_level;
     void run();
 
     Node* choose_node_to_decide();
@@ -34,6 +34,10 @@ public:
     void propogate(Node*);
 
     void conflict_handler(Node*);
+
+    void backjump(unsigned int);
+
+    void propogate_learned_clause_if_unit(Clause&)
 };
 
 
