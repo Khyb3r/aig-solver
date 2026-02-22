@@ -249,4 +249,22 @@ void Solver::conflict_handler(Node* conflict_node) {
             }
         }
     }
+
+    Literal uip{};
+    for (int i = 0; i < clause.literals.size(); i++) {
+        const Literal& literal = clause.literals[i];
+        if (literal.node->decision_level == conflict_node_decision_level) {
+            uip = literal;
+        }
+    }
+    // Calculate backjump level
+    unsigned int backjump_level = 0;
+    for (int i = 0; i < clause.literals.size(); i++) {
+        const Literal& literal = clause.literals[i];
+        if (literal.node->decision_level > backjump_level && literal.node != uip.node) {
+            backjump_level = literal.node->decision_level;
+        }
+    }
+    // Add clause to database
+    clause_db.push_back(clause);
 }
