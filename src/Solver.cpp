@@ -192,41 +192,61 @@ void Solver::propogate_backward_helper(Node *curr) {
 }
 
 void Solver::conflict_handler(Node* conflict_node) {
-    // Move up graph from current node using reason pointers till last decision (no reason)
-    std::set<Node*> visited_nodes;
-    std::stack<Node*> nodes_stack;
-    unsigned int current_nodes_counted = (conflict_node->decision_level == decision_level_boundary_indexes.back()) ? 1 : 0;
-    nodes_stack.push(conflict_node);
-    Node* uip = nullptr;
-    do {
-        Node* curr = nodes_stack.top();
-        nodes_stack.pop();
-        visited_nodes.insert(curr);
-        uip = curr;
-        if (curr->decision_level == decision_level_boundary_indexes.back()) {
-            current_nodes_counted--;
-            if (current_nodes_counted == 1 && uip == nullptr) uip = curr;
+    Clause clause;
+
+    unsigned int nodes_in_curr_decision_level = 0;
+    unsigned int conflict_node_decision_level = conflict_node->decision_level;
+
+    // Add reasons to clause
+    if (conflict_node->reason != nullptr) {
+        clause.literals.push_back({conflict_node->reason, conflict_node->reason->assignment == Assignment::TRUE});
+        if (conflict_node->reason->decision_level == conflict_node_decision_level)
+            nodes_in_curr_decision_level++;
+    }
+    if (conflict_node->reason_two != nullptr) {
+        clause.literals.push_back({conflict_node->reason_two, conflict_node->reason_two->assignment == Assignment::TRUE});
+        if (conflict_node->reason_two->decision_level == conflict_node_decision_level)
+            nodes_in_curr_decision_level++;
+
+    }
+
+    while (nodes_in_curr_decision_level > 1) {
+        // Pick any literal to be resolved in clause at current decision level
+        Literal literal = {nullptr, false};
+        for (int i = 0; i < clause.literals.size(); i++) {
+            const Literal& lit = clause.literals[i];
+            if (lit.node != nullptr && lit.node->decision_level == conflict_node_decision_level && lit.node->reason != nullptr) {
+                literal = lit;
+                clause.literals.erase(clause.literals.begin() + i);
+                break;
+            }
+        }
+        if (literal.node == nullptr) break;
+
+        // Add its reasons to clause
+        bool lit_in_clause_flag_1 = false;
+        bool lit_in_clause_flag_2 = false;
+        for (int i = 0; i < clause.literals.size(); i++) {
+            const Literal& curr_literal = clause.literals[i];
+            if (literal.node->reason != nullptr && curr_literal.node == literal.node->reason && curr_literal.is_negated == (literal.node->reason->assignment == Assignment::TRUE))
+                lit_in_clause_flag_1 = true;
+            if (literal.node->reason_two != nullptr && curr_literal.node == literal.node->reason_two && curr_literal.is_negated == (literal.node->reason_two->assignment == Assignment::TRUE))
+                lit_in_clause_flag_2 = true;
+        }
+        if (literal.node->reason != nullptr && !lit_in_clause_flag_1) {
+            clause.literals.push_back({literal.node->reason, literal.node->reason->assignment == Assignment::TRUE});
+        }
+        if (literal.node->reason_two != nullptr && !lit_in_clause_flag_2){
+            clause.literals.push_back({literal.node->reason_two, literal.node->reason_two->assignment == Assignment::TRUE});
         }
 
-        if (curr->reason != nullptr && !visited_nodes.contains(curr->reason)
-            && curr->reason->decision_level == conflict_node->decision_level) {
-            nodes_stack.push(curr->reason);
-            current_nodes_counted++;
-        }
-        if (curr->reason_two != nullptr && !visited_nodes.contains(curr->reason_two)
-            && curr->reason_two->decision_level == conflict_node->decision_level) {
-            nodes_stack.push(curr->reason_two);
-            current_nodes_counted++;
+        // Update how many literals in clause at current decision level are left (Change loop body to increment/decrement instead of this)
+        nodes_in_curr_decision_level = 0;
+        for (int i = 0 ; i < clause.literals.size(); i++) {
+            const Literal& l = clause.literals[i];
+            if (l.node != nullptr && l.node->decision_level == conflict_node_decision_level) {
+                nodes_in_curr_decision_level++;
+            }
         }
     }
-    while (current_nodes_counted > 1 && !nodes_stack.empty());
-
-    // Detect conflict
-    // Create Implication Graph
-    // Analyse conflict  (Cut/UIP)
-    // Generate learned constraint and Store in some manner not to do this again?
-    // Get the backjump level
-    // Undo assignments /  Purge assigment list back to last decision level --> Backjump
-    // Add learned clause
-    // Resume propagation
 }

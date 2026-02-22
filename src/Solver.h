@@ -34,9 +34,6 @@ public:
     void propogate(Node*);
 
     void conflict_handler(Node*);
-
-
-
 };
 
 

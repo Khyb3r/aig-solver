@@ -29,8 +29,8 @@ struct Literal {
     bool is_negated;
 };
 
-struct ConflictReason {
-    std::vector<Literal*> nodes_involved;
+struct Clause {
+    std::vector<Literal> literals;
 };
 
 #endif //AIG_H

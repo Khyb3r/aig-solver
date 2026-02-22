@@ -245,4 +245,48 @@ PROPAGATION RULES
 
             else {continue;}
 
+
+
+// Detect conflict
+    // Create Implication Graph
+    // Analyse conflict  (Cut/UIP)
+    // Generate learned constraint and Store in some manner not to do this again?
+    // Get the backjump level
+    // Undo assignments /  Purge assigment list back to last decision level --> Backjump
+    // Add learned clause
+    // Resume propagation
+
+
+    /* clause = reasons of conflict
+    while (number of literals in clause at current level > 1):
+        pick one
+        replace it with its reasons
+    UIP = the remaining current-level literal
+    learn clause
+
+
+unsigned int current_nodes_counted = (conflict_node->decision_level == decision_level_boundary_indexes.back()) ? 1 : 0;
+Node* uip = nullptr;
+do {
+    Node* curr = nodes_stack.top();
+    nodes_stack.pop();
+    visited_nodes.insert(curr);
+    if (curr->decision_level == decision_level_boundary_indexes.back()) {
+        current_nodes_counted--;
+        if (current_nodes_counted == 1 && uip == nullptr)
+            uip = curr;
+    }
+
+    if (curr->reason != nullptr && !visited_nodes.contains(curr->reason)
+        && curr->reason->decision_level == conflict_node->decision_level) {
+        nodes_stack.push(curr->reason);
+        current_nodes_counted++;
+        }
+    if (curr->reason_two != nullptr && !visited_nodes.contains(curr->reason_two)
+        && curr->reason_two->decision_level == conflict_node->decision_level) {
+        nodes_stack.push(curr->reason_two);
+        current_nodes_counted++;
+        }
+}
+while (current_nodes_counted > 1 && !nodes_stack.empty());
 */
