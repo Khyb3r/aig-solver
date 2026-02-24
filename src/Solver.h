@@ -6,40 +6,34 @@
 
 class Solver {
 public:
-    Solver();
-
     Node** nodes_list;
     std::vector<Edge> output_nodes;
     std::vector<Node*> assignment_list;
     std::vector<int> decision_level_boundary_indexes;
     std::queue<Node*> propagation_queue;
     std::vector<Clause> clause_db;
-    int solver_decision_level;
-    void run();
+    int solver_decision_level = 0;
+    bool conflict = false;
+    bool SAT = true;
+    int nodes_list_size = 0;
 
-    Node* choose_node_to_decide();
-
+    void preprocess();
+    void run(int);
     // Introduce heuristics or some other method of deciding whether Node should be T/F
     // Currently always assigns True
-    void decide_node_assignment(Node*);
+    Node* decide_node(int);
 
-    void add_to_assignment_list(Node* a);
-
-    void move_to_next_decision_level();
-
-    void update_propogation_queue(Node*);
+    void propogate(Node*);
 
     void propogate_forward_helper(Node*);
+
     void propogate_backward_helper(Node*);
-    void propogate(Node*);
 
     void conflict_handler(Node*);
 
     void backjump(unsigned int);
 
-    void propogate_learned_clause_if_unit(Clause&)
+    bool satisfiable_check(int);
 };
-
-
 
 #endif //SOLVER_H

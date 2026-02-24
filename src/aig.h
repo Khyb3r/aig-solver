@@ -2,7 +2,7 @@
 #define AIG_H
 
 struct Node;
-
+struct Clause;
 struct Edge {
     Node* node;                                    // 8 bytes
     bool inverted;                                 // 1 byte
@@ -19,9 +19,10 @@ struct Node {
     Assignment assignment = Assignment::UNASSIGNED; // 4 bytes
     unsigned int decision_level = 0;                // 4 bytes
     Node* reason = nullptr;                         // 8 bytes
-    Node* reason_two = nullptr;                       // 8 bytes
+    Node* reason_two = nullptr;                     // 8 bytes
+    //Clause* clause_reason = nullptr;                // 8 bytes
 
-    std::vector<Node*> output_nodes;             // 16 bytes
+    std::vector<Node*> output_nodes;                // 16 bytes
 };
 
 struct Literal {

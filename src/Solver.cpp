@@ -1,52 +1,72 @@
 #include "Solver.h"
+#include <iostream>
 #include <set>
-#include <stack>
 
-void Solver::run() {
+void Solver::preprocess() {
+    for (int i = 0; i < output_nodes.size(); i++) {
+        Edge& output = output_nodes[i];
+        if (output.node != nullptr && output.node->assignment == Assignment::UNASSIGNED) {
+            output.node->assignment = output.inverted ? Assignment::FALSE : Assignment::TRUE;
+            output.node->decision_level = 0;
+            assignment_list.push_back(output.node);
+            propagation_queue.push(output.node);
+        }
+    }
+    while (!propagation_queue.empty() && !conflict) {
+        Node& n = *propagation_queue.front();
+        propagation_queue.pop();
+        propogate(&n);
+    }
+}
+
+void Solver::run(int nodes_list_size) {
     // choose a node to decide
     // make a decision
     // add to assignment list, add to propogation queue
     // keep propogating until queue is empty or conflict found -> repeat step above and this again and again
-    solver_decision_level = 0;
-    bool satisfiable = false;
-    bool conflict = false;
-    while (!satisfiable) {
-        Node* curr_node = choose_node_to_decide();
-        decide_node_assignment(curr_node);
-        add_to_assignment_list(curr_node);
-        update_propogation_queue(curr_node);
+
+    preprocess();
+    decision_level_boundary_indexes.push_back(assignment_list.size());
+    solver_decision_level = 1;
+    while (SAT) {
+        if (satisfiable_check(nodes_list_size)) {
+            std::cout << "SATISFIABLE" << '\n';
+            break;
+        }
+        decision_level_boundary_indexes.push_back(assignment_list.size());
+        Node* node = decide_node(nodes_list_size);
+        if (node == nullptr) break;
+        assignment_list.push_back(node);
+        propagation_queue.push(node);
         while (!propagation_queue.empty() && !conflict) {
             Node& n = *propagation_queue.front();
             propagation_queue.pop();
             propogate(&n);
         }
+        conflict = false;
+        solver_decision_level++;
     }
-
-}
-
-Node* Solver::choose_node_to_decide() {
-    Node* ptr = nodes_list[0];
-    while (ptr != nullptr && ptr->assignment != Assignment::UNASSIGNED) {
-        ptr++;
+    if (!SAT) {
+        std::cout << "UNSATISFIABLE" << '\n';
     }
-    return ptr;
 }
 
-// CHANGE: Currently always decides True
-void Solver::decide_node_assignment(Node* a) {
-    if (a->assignment == Assignment::UNASSIGNED) a->assignment = Assignment::TRUE;
-}
+Node* Solver::decide_node(int nodes_list_size) {
+    Node* node = nullptr;
+    for (int i = 0; i < nodes_list_size; i++) {
+        if (nodes_list[i] != nullptr && nodes_list[i]->assignment == Assignment::UNASSIGNED) {
+            node = nodes_list[i];
+            break;
+        }
+    }
+    if (node == nullptr) return nullptr;
 
-void Solver::add_to_assignment_list(Node *a) {
-    assignment_list.push_back(a);
-}
-
-void Solver::move_to_next_decision_level() {
-    decision_level_boundary_indexes.push_back(assignment_list.size() - 1);
-}
-
-void Solver::update_propogation_queue(Node* a) {
-    propagation_queue.push(a);
+    if (node->assignment == Assignment::UNASSIGNED) {
+        // Change way in which this is done (CURRENTLY ALWAYS DECIDING TRUE)
+        node->assignment = Assignment::TRUE;
+        node->decision_level = solver_decision_level;
+    }
+    return node;
 }
 
 void Solver::propogate(Node* a) {
@@ -58,13 +78,12 @@ void Solver::propogate(Node* a) {
     }
     // forward prop only
     propogate_forward_helper(a);
-
 }
 
 void Solver::propogate_forward_helper(Node *a) {
     for (int i = 0; i < a->output_nodes.size(); i++) {
         // Current node output
-        Node& output = a->output_nodes[i];
+        Node& output = *a->output_nodes[i];
         // Output node is an AND node
         if (output.type == NodeType::AND) {
             // Inputs to our output node, one of them will be us
@@ -81,6 +100,7 @@ void Solver::propogate_forward_helper(Node *a) {
                 (a->assignment == Assignment::TRUE && curr_node_edge->inverted))) {
                 if (output.assignment == Assignment::UNASSIGNED) {
                     output.assignment = Assignment::FALSE;
+                    output.decision_level = solver_decision_level;
                     assignment_list.push_back(&output);
                     propagation_queue.push(&output);
                     output.reason = a;
@@ -88,6 +108,7 @@ void Solver::propogate_forward_helper(Node *a) {
                 else if (output.assignment == Assignment::TRUE) {
                     // conflict
                     conflict_handler(&output);
+                    conflict = true;
                     return;
                 }
             }
@@ -100,6 +121,7 @@ void Solver::propogate_forward_helper(Node *a) {
 
                 if (output.assignment == Assignment::UNASSIGNED) {
                     output.assignment = Assignment::TRUE;
+                    output.decision_level = solver_decision_level;
                     assignment_list.push_back(&output);
                     propagation_queue.push(&output);
                     output.reason = a;
@@ -108,6 +130,7 @@ void Solver::propogate_forward_helper(Node *a) {
                 else if (output.assignment == Assignment::FALSE) {
                     // conflict
                     conflict_handler(&output);
+                    conflict = true;
                     return;
                 }
             }
@@ -137,6 +160,7 @@ void Solver::propogate_backward_helper(Node *curr) {
         // If First Unassigned set to True otherwise conflict if set to False
         if (first_input.node->assignment == Assignment::UNASSIGNED) {
             first_input.node->assignment = first_input.inverted ? Assignment::FALSE : Assignment::TRUE;
+            first_input.node->decision_level = solver_decision_level;
             assignment_list.push_back(first_input.node);
             propagation_queue.push(first_input.node);
             first_input.node->reason = curr;
@@ -145,12 +169,14 @@ void Solver::propogate_backward_helper(Node *curr) {
         else if (!first_input_true && first_input_assigned) {
             // conflict
             conflict_handler(first_input.node);
+            conflict = true;
             return;
         }
 
         // If Second Unassigned set to True otherwise conflict if set to True
         if (second_input.node->assignment == Assignment::UNASSIGNED) {
             second_input.node->assignment = second_input.inverted ? Assignment::FALSE : Assignment::TRUE;
+            second_input.node->decision_level = solver_decision_level;
             assignment_list.push_back(second_input.node);
             propagation_queue.push(second_input.node);
             second_input.node->reason = curr;
@@ -158,6 +184,7 @@ void Solver::propogate_backward_helper(Node *curr) {
         else if (!second_input_true && second_input_assigned) {
             // conflict
             conflict_handler(second_input.node);
+            conflict = true;
             return;
         }
     }
@@ -170,6 +197,7 @@ void Solver::propogate_backward_helper(Node *curr) {
             if (first_input_true && first_input_assigned && second_input_true && second_input_assigned) {
                 // conflict
                 conflict_handler(curr);
+                conflict = true;
                 return;
             }
         }
@@ -177,6 +205,7 @@ void Solver::propogate_backward_helper(Node *curr) {
         if (first_input.node->assignment == Assignment::UNASSIGNED) {
             if (second_input_true && second_input_assigned) {
                 first_input.node->assignment = first_input.inverted ? Assignment::TRUE : Assignment::FALSE;
+                first_input.node->decision_level = solver_decision_level;
                 assignment_list.push_back(first_input.node);
                 propagation_queue.push(first_input.node);
                 first_input.node->reason = curr;
@@ -187,6 +216,7 @@ void Solver::propogate_backward_helper(Node *curr) {
         if (second_input.node->assignment == Assignment::UNASSIGNED) {
             if (first_input_true && first_input_assigned) {
                 second_input.node->assignment = second_input.inverted ? Assignment::TRUE : Assignment::FALSE;
+                second_input.node->decision_level = solver_decision_level;
                 assignment_list.push_back(second_input.node);
                 propagation_queue.push(second_input.node);
                 second_input.node->reason = curr;
@@ -197,6 +227,11 @@ void Solver::propogate_backward_helper(Node *curr) {
 }
 
 void Solver::conflict_handler(Node* conflict_node) {
+    std::cout << "CONFLICT HANDLER METHOD" << '\n';
+    if (conflict_node->decision_level == 0) {
+        SAT = false;
+        return;
+    }
     Clause clause;
 
     unsigned int nodes_in_curr_decision_level = 0;
@@ -273,31 +308,39 @@ void Solver::conflict_handler(Node* conflict_node) {
     // Add clause to database
     clause_db.push_back(clause);
     backjump(backjump_level);
-    propogate_learned_clause_if_unit(clause_db.back());
 
+    uip.node->assignment = uip.is_negated ? Assignment::FALSE : Assignment::TRUE;
+    uip.node->decision_level = solver_decision_level;
+    uip.node->reason = nullptr;
+    uip.node->reason_two = nullptr;
+    assignment_list.push_back(uip.node);
+    propagation_queue.push(uip.node);
 }
 
 
 void Solver::backjump(unsigned int backjump_level) {
     int decision_level_for_backjump = decision_level_boundary_indexes[backjump_level];
 
-    for (int i = decision_level_for_backjump+1; i < assignment_list.size(); i++) {
+    for (int i = decision_level_for_backjump; i < assignment_list.size(); i++) {
         Node* curr_node = assignment_list[i];
         curr_node->assignment = Assignment::UNASSIGNED;
         curr_node->decision_level = 0;
         curr_node->reason = nullptr;
         curr_node->reason_two = nullptr;
     }
-    assignment_list.erase(assignment_list.begin() + decision_level_for_backjump+1, assignment_list.end());
-    decision_level_boundary_indexes.erase(decision_level_boundary_indexes.begin() + backjump_level+1, decision_level_boundary_indexes.end());
+    assignment_list.erase(assignment_list.begin() + decision_level_for_backjump, assignment_list.end());
+    decision_level_boundary_indexes.erase(decision_level_boundary_indexes.begin() + backjump_level, decision_level_boundary_indexes.end());
     while (!propagation_queue.empty()) {
         propagation_queue.pop();
     }
     solver_decision_level = backjump_level;
 }
 
-void Solver::propogate_learned_clause_if_unit(Clause &clause) {
-    for (int i = 0; i < clause.literals.size(); i++) {
-
+bool Solver::satisfiable_check(int nodes_list_size) {
+    for (int i = 0; i < nodes_list_size; i++) {
+        if (nodes_list[i] != nullptr && nodes_list[i]->assignment == Assignment::UNASSIGNED) {
+            return false;
+        }
     }
+    return true;
 }

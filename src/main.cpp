@@ -83,6 +83,7 @@ int main(int argc, char **argv) {
 
 
     Node* nodes_list[aig->maxvar + 2];
+    memset(nodes_list, 0, sizeof(nodes_list));
     // add input nodes to graph/circuit
     for (int i = 0; i < aig->num_inputs; i++) {
         const aiger_symbol& input_node = aig->inputs[i];
@@ -136,10 +137,12 @@ int main(int argc, char **argv) {
     }
 
     // print structure of AIG to ensure it is correct
-    printInternalAIG(nodes_list, outputs, aig->maxvar);
+    //printInternalAIG(nodes_list, outputs, aig->maxvar);
 
-
-
+    Solver solver;
+    solver.nodes_list = nodes_list;
+    solver.output_nodes = outputs;
+    solver.run(aig->maxvar + 2);
 
     aiger_reset(aig);
     return 0;
@@ -148,7 +151,7 @@ int main(int argc, char **argv) {
 
 
 /* flow of what is to occur in algorithm
-// assign a value for a node
+ assign a value for a node
 Solver solver{};
 solver.nodes_list = nodes_list;
 solver.output_nodes = outputs;
@@ -257,7 +260,7 @@ PROPAGATION RULES
     // Resume propagation
 
 
-    /* clause = reasons of conflict
+     clause = reasons of conflict
     while (number of literals in clause at current level > 1):
         pick one
         replace it with its reasons
@@ -289,4 +292,40 @@ do {
         }
 }
 while (current_nodes_counted > 1 && !nodes_stack.empty());
+
+
+
+
+
+
+
+
+
+
+
+
+Node* Solver::choose_node_to_decide() {
+    Node* ptr = nodes_list[0];
+    while (ptr != nullptr && ptr->assignment != Assignment::UNASSIGNED) {
+        ptr++;
+    }
+    return ptr;
+}
+
+// CHANGE: Currently always decides True
+void Solver::decide_node_assignment(Node* a) {
+    if (a->assignment == Assignment::UNASSIGNED) a->assignment = Assignment::TRUE;
+}
+
+void Solver::add_to_assignment_list(Node *a) {
+    assignment_list.push_back(a);
+}
+void Solver::update_propogation_queue(Node* a) {
+    propagation_queue.push(a);
+}
+
+void Solver::move_to_next_decision_level() {
+    decision_level_boundary_indexes.push_back(assignment_list.size() - 1);
+}
+
 */
