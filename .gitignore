@@ -51,3 +51,5 @@ src/.idea
 .DS_Store
 
 Benchmarks/
+.aag
+.aig
