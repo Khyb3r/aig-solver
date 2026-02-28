@@ -1,6 +1,9 @@
 #include <assert.h>
 #include <complex>
 #include <iostream>
+#include <chrono>
+#include <__filesystem/recursive_directory_iterator.h>
+
 #include "aig.h"
 #include "Solver.h"
 
@@ -82,6 +85,7 @@ int main(int argc, char **argv) {
     }
 
 
+
     Node* nodes_list[aig->maxvar + 2];
     memset(nodes_list, 0, sizeof(nodes_list));
     // add input nodes to graph/circuit
@@ -137,195 +141,20 @@ int main(int argc, char **argv) {
     }
 
     // print structure of AIG to ensure it is correct
-    //printInternalAIG(nodes_list, outputs, aig->maxvar);
+    // printInternalAIG(nodes_list, outputs, aig->maxvar);
 
     Solver solver;
     solver.nodes_list = nodes_list;
     solver.output_nodes = outputs;
-    solver.run(aig->maxvar + 2);
 
+    // track time
+    std::chrono::time_point<std::chrono::system_clock> start_time = std::chrono::system_clock::now();
+    solver.run(aig->maxvar + 2);
+    std::chrono::time_point<std::chrono::system_clock> end_time = std::chrono::system_clock::now();
+    auto duration = end_time - start_time;
+
+    std::cout << "\nTime taken: " << duration << '\n';
     aiger_reset(aig);
     return 0;
 
 }
-
-
-/* flow of what is to occur in algorithm
- assign a value for a node
-Solver solver{};
-solver.nodes_list = nodes_list;
-solver.output_nodes = outputs;
-
-Node& test_node = *nodes_list[0];
-test_node.assignment = Assignment::TRUE;
-test_node.decision_level = 0;
-
-solver.assignment_list.push_back(&test_node);
-solver.decision_level_boundary_indexes.at(test_node.decision_level)++;
-solver.propogation_queue.push(&test_node);
-
-
-// Node A (l : 1)
-// Node B (l : 1)
-
-// [2, 3, 4, 5]
-
-
-PROPAGATION RULES
-
-            // Cover entire truth table
-            // F AND F = F
-            // F AND T = F
-            // T AND F = F
-            // T AND T = T
-
-            if (other_input->node->assignment == Assignment::UNASSIGNED && output.assignment == Assignment::UNASSIGNED) {
-                // Only thing we can propagate if F AND F = F
-                if (a->assignment == Assignment::TRUE && !curr_node_edge->inverted ||
-                    a->assignment == Assignment::FALSE && curr_node_edge->inverted) {
-                    output.assignment = Assignment::FALSE;
-                    assignment_list.push_back(&output);
-                    propagation_queue.push(&output);
-                }
-            }
-
-            else if (other_input->node->assignment != Assignment::UNASSIGNED) {
-                // F AND (T || F) = F
-                // If we are FALSE, Propagate out that our AND gate is false
-                if ((curr_node_edge->inverted && a->assignment == Assignment::TRUE) ||
-                    !curr_node_edge->inverted && a->assignment == Assignment::FALSE) {
-                    output.assignment = Assignment::FALSE;
-                    assignment_list.push_back(&output);
-                    propagation_queue.push(&output);
-                    }
-
-                // (T || F) AND F = F
-                // Propagate if other input is FALSE, so AND is a FALSE
-                else if ((other_input->node->assignment == Assignment::TRUE && other_input->inverted) ||
-                    other_input->node->assignment == Assignment::FALSE && !other_input->inverted) {
-                    if (output.assignment == Assignment::UNASSIGNED) {
-                        output.assignment = Assignment::FALSE;
-                        assignment_list.push_back(&output);
-                        propagation_queue.push(&output);
-                    }
-                    else if (output.assignment == Assignment::TRUE) {}// conflict
-                    else {} // skip
-
-                    }
-
-                // T AND T = T
-                // If we are True, and other input Gate is True, AND must be true
-                else if (((curr_node_edge->inverted && a->assignment == Assignment::FALSE) ||
-                    (!curr_node_edge->inverted && a->assignment == Assignment::TRUE))
-                    && ((other_input->inverted && other_input->node->assignment == Assignment::FALSE) ||
-                    (!other_input->inverted && other_input->node->assignment == Assignment::TRUE))) {
-
-                    if (output.assignment == Assignment::UNASSIGNED) {}
-
-                    output.assignment = Assignment::TRUE;
-                    assignment_list.push_back(&output);
-                    propagation_queue.push(&output);
-                    }
-            }
-
-            else if (output.assignment != Assignment::UNASSIGNED) {
-                // T AND ? = F
-                // T AND ? = T
-                if ((a->assignment == Assignment::TRUE && !curr_node_edge->inverted ||
-                    a->assignment == Assignment::FALSE && curr_node_edge->inverted) &&
-                    (output.assignment == Assignment::FALSE)) {
-                    if (other_input->inverted) other_input->node->assignment = Assignment::TRUE;
-                    else other_input->node->assignment = Assignment::FALSE;
-                }
-
-                if ((a->assignment == Assignment::TRUE && !curr_node_edge->inverted ||
-                    a->assignment == Assignment::FALSE && curr_node_edge->inverted) &&
-                    (output.assignment == Assignment::TRUE)) {
-                    if (other_input->inverted) other_input->node->assignment = Assignment::FALSE;
-                    else other_input->node->assignment = Assignment::TRUE;
-                }
-            }
-
-            else {continue;}
-
-
-
-// Detect conflict
-    // Create Implication Graph
-    // Analyse conflict  (Cut/UIP)
-    // Generate learned constraint and Store in some manner not to do this again?
-    // Get the backjump level
-    // Undo assignments /  Purge assigment list back to last decision level --> Backjump
-    // Add learned clause
-    // Resume propagation
-
-
-     clause = reasons of conflict
-    while (number of literals in clause at current level > 1):
-        pick one
-        replace it with its reasons
-    UIP = the remaining current-level literal
-    learn clause
-
-
-unsigned int current_nodes_counted = (conflict_node->decision_level == decision_level_boundary_indexes.back()) ? 1 : 0;
-Node* uip = nullptr;
-do {
-    Node* curr = nodes_stack.top();
-    nodes_stack.pop();
-    visited_nodes.insert(curr);
-    if (curr->decision_level == decision_level_boundary_indexes.back()) {
-        current_nodes_counted--;
-        if (current_nodes_counted == 1 && uip == nullptr)
-            uip = curr;
-    }
-
-    if (curr->reason != nullptr && !visited_nodes.contains(curr->reason)
-        && curr->reason->decision_level == conflict_node->decision_level) {
-        nodes_stack.push(curr->reason);
-        current_nodes_counted++;
-        }
-    if (curr->reason_two != nullptr && !visited_nodes.contains(curr->reason_two)
-        && curr->reason_two->decision_level == conflict_node->decision_level) {
-        nodes_stack.push(curr->reason_two);
-        current_nodes_counted++;
-        }
-}
-while (current_nodes_counted > 1 && !nodes_stack.empty());
-
-
-
-
-
-
-
-
-
-
-
-
-Node* Solver::choose_node_to_decide() {
-    Node* ptr = nodes_list[0];
-    while (ptr != nullptr && ptr->assignment != Assignment::UNASSIGNED) {
-        ptr++;
-    }
-    return ptr;
-}
-
-// CHANGE: Currently always decides True
-void Solver::decide_node_assignment(Node* a) {
-    if (a->assignment == Assignment::UNASSIGNED) a->assignment = Assignment::TRUE;
-}
-
-void Solver::add_to_assignment_list(Node *a) {
-    assignment_list.push_back(a);
-}
-void Solver::update_propogation_queue(Node* a) {
-    propagation_queue.push(a);
-}
-
-void Solver::move_to_next_decision_level() {
-    decision_level_boundary_indexes.push_back(assignment_list.size() - 1);
-}
-
-*/

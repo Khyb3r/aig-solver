@@ -34,6 +34,8 @@ public:
     void backjump(unsigned int);
 
     bool satisfiable_check(int);
+
+    void check_clauses(Node* n);
 };
 
 #endif //SOLVER_H

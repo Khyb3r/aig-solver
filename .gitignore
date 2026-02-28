@@ -49,3 +49,5 @@
 src/cmake-build-debug/
 src/.idea
 .DS_Store
+
+Benchmarks/

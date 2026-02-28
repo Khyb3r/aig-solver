@@ -6,6 +6,9 @@
     <option name="/Default/Housekeeping/FeatureSuggestion/FeatureSuggestionManager/DisabledSuggesters/=SwitchToGoToActionSuggester/@EntryIndexedValue" value="true" type="bool" />
     <option name="/Default/Housekeeping/FeatureSuggestion/FeatureSuggestionManager/DisabledSuggesters/=SwitchToGoToActionSuggester/@EntryIndexRemoved" />
   </component>
+  <component name="Black">
+    <option name="sdkName" value="Python 3.13 (hw13-TLBs)" />
+  </component>
   <component name="CMakePythonSetting">
     <option name="pythonIntegrationState" value="YES" />
   </component>

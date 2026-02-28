@@ -42,6 +42,7 @@ void Solver::run(int nodes_list_size) {
             Node& n = *propagation_queue.front();
             propagation_queue.pop();
             propogate(&n);
+            //check_clauses(&n);
         }
         conflict = false;
         solver_decision_level++;
@@ -70,6 +71,9 @@ Node* Solver::decide_node(int nodes_list_size) {
 }
 
 void Solver::propogate(Node* a) {
+    for (int i = 0; i < clause_db.size(); i++) {
+
+    }
     if (a->type == NodeType::AND) {
         // backprop and forward prop
         propogate_backward_helper(a);
@@ -227,7 +231,15 @@ void Solver::propogate_backward_helper(Node *curr) {
 }
 
 void Solver::conflict_handler(Node* conflict_node) {
-    std::cout << "CONFLICT HANDLER METHOD" << '\n';
+    // Detect conflict
+    // Create Implication Graph
+    // Analyse conflict  (Cut/UIP)
+    // Generate learned constraint and Store in some manner not to do this again?
+    // Get the backjump level
+    // Undo assignments /  Purge assigment list back to last decision level --> Backjump
+    // Add learned clause
+    // Resume propagation
+
     if (conflict_node->decision_level == 0) {
         SAT = false;
         return;
@@ -343,4 +355,53 @@ bool Solver::satisfiable_check(int nodes_list_size) {
         }
     }
     return true;
+}
+
+void Solver::check_clauses(Node *n) {
+    for (int i = 0; i < clause_db.size(); i++) {
+        bool flag = false;
+        Literal* selected_lit = nullptr;
+        unsigned int wrong = 0;
+        for (int j = 0; j < clause_db[i].literals.size(); j++) {
+            Literal& lit = clause_db[i].literals[j];
+            if (lit.node->assignment == Assignment::UNASSIGNED) {
+                if (selected_lit == nullptr)
+                    selected_lit = &lit;
+                else {
+                    flag = true;
+                    break;
+                }
+            }
+            else if ((lit.node->assignment == Assignment::TRUE && lit.is_negated) ||
+                (lit.node->assignment == Assignment::FALSE && !lit.is_negated)) {
+                wrong++;
+            }
+            else {
+                flag = true;
+                break;
+            }
+
+        }
+
+        if (flag) continue;
+
+        // Assign the unassigned node
+        if (selected_lit != nullptr && wrong == clause_db[i].literals.size()-1) {
+            if (selected_lit->is_negated) selected_lit->node->assignment = Assignment::FALSE;
+            else selected_lit->node->assignment = Assignment::TRUE;
+
+            selected_lit->node->decision_level = n->decision_level;
+            assignment_list.push_back(selected_lit->node);
+            propagation_queue.push(selected_lit->node);
+            selected_lit->node->clause_reason = &clause_db[i];
+            break;
+        }
+
+        // conflict again
+        if (selected_lit == nullptr && wrong == clause_db[i].literals.size()) {
+            conflict = true;
+            conflict_handler(clause_db[i].literals[clause_db[i].literals.size()-1].node);
+            break;
+        }
+    }
 }
