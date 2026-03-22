@@ -1,8 +1,9 @@
-#ifndef AIG_H
-#define AIG_H
+#ifndef CDCL_AIG_H
+#define CDCL_AIG_H
 #include <vector>
 
 struct Node;
+struct Clause;
 struct Edge {
     Node* node;                                    // 8 bytes
     bool inverted;                                 // 1 byte
@@ -17,11 +18,23 @@ struct Node {
     Edge input_nodes[2];                            // 32 bytes
 
     Assignment assignment = Assignment::UNASSIGNED; // 4 bytes
-    int decision_level = -1;                        // 4 bytes
+    unsigned int decision_level = -1;               // 4 bytes
+
+    Node* reason = nullptr;                         // 8 bytes
+    Node* reason_two = nullptr;                     // 8 bytes
+
+    //Clause* clause_reason = nullptr;                // 8 bytes
 
     std::vector<Node*> output_nodes;                // 16 bytes
-
-                                                    // Total: 64
 };
 
-#endif //AIG_H
+struct Literal {
+    Node* node;
+    bool is_negated;
+};
+
+struct Clause {
+    std::vector<Literal> literals;
+};
+
+#endif //CDCL_AIG_H

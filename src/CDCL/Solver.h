@@ -2,7 +2,7 @@
 #define SOLVER_H
 #include <queue>
 #include <vector>
-#include "aig.h"
+#include "../cdcl-aig.h"
 
 class Solver {
 public:
@@ -12,16 +12,21 @@ public:
     std::vector<int> decision_level_boundary_indexes;
     std::queue<Node*> propagation_queue;
     std::vector<Clause> clause_db;
+
     int solver_decision_level = 0;
     bool conflict = false;
     bool SAT = true;
     int nodes_list_size = 0;
 
+    Node* conflict_node = nullptr;
+    Node* conflict_reason = nullptr;
+    Node* conflict_reason_two = nullptr;
+
     void preprocess();
-    void run(int);
+    bool run();
     // Introduce heuristics or some other method of deciding whether Node should be T/F
     // Currently always assigns True
-    Node* decide_node(int);
+    Node* decide_node();
 
     void propogate(Node*);
 
@@ -29,13 +34,19 @@ public:
 
     void propogate_backward_helper(Node*);
 
-    void conflict_handler(Node*);
+    inline void backtrack(int);
 
-    void backjump(unsigned int);
+    void clause_propogation();
 
-    bool satisfiable_check(int);
+    inline void backtrack();
 
-    void check_clauses(Node* n);
+    bool conflict_handler();
+
+    // -- THINGS TO ADD/CHANGE --
+    void backjump();
+    bool cdcl_conflict_handler();
+
+
 };
 
 #endif //SOLVER_H

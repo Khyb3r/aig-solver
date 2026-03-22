@@ -4,8 +4,9 @@
 #include <chrono>
 #include <__filesystem/recursive_directory_iterator.h>
 
-#include "aig.h"
-#include "Solver.h"
+
+//#include "CDCL/Solver.h"
+#include "DPLL/DPLLSolver.h"
 
 // import aiger library - use extern C to disable name mangling
 extern "C" {
@@ -17,7 +18,7 @@ void printInternalAIG(Node* nodes_list[], std::vector<Edge>& outputs, unsigned m
     for (int i = 1; i <= maxvar; i++) {
         Node* n = nodes_list[i];
         if (!n) continue;
-        std::cout << "Node " << i << ": type="
+        std::cout << "Node " << i << ": type = "
              << (n->type == NodeType::INPUT ? "INPUT" : "AND") << "\n";
 
         if (n->type == NodeType::AND) {
@@ -71,7 +72,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    // Test to see we are printing all nodes from file correctly
+    /* Test to see we are printing all nodes from file correctly
     for (int i = 0; i < aig->num_inputs; i++) {
         unsigned variable_index = aig->inputs[i].lit / 2;
         std::cout << "Input Variables: " << variable_index << '\n';
@@ -83,11 +84,14 @@ int main(int argc, char **argv) {
         unsigned rhs_ix_2 = a.rhs1 / 2;
         std::cout << lhs_idx << " = " << rhs_idx << " AND " << rhs_ix_2 << "\n\n";
     }
+    */
 
+    //Node* nodes_list[aig->maxvar + 2];
+    //memset(nodes_list, 0, sizeof(nodes_list));
 
+    Node** nodes_list = new Node*[aig->maxvar + 2];
+    memset(nodes_list, 0, sizeof(Node*) * (aig->maxvar + 2));
 
-    Node* nodes_list[aig->maxvar + 2];
-    memset(nodes_list, 0, sizeof(nodes_list));
     // add input nodes to graph/circuit
     for (int i = 0; i < aig->num_inputs; i++) {
         const aiger_symbol& input_node = aig->inputs[i];
@@ -141,20 +145,47 @@ int main(int argc, char **argv) {
     }
 
     // print structure of AIG to ensure it is correct
-    // printInternalAIG(nodes_list, outputs, aig->maxvar);
+    printInternalAIG(nodes_list, outputs, aig->maxvar);
+    std::cout << "Amount of nodes" << aig->maxvar+2;
 
-    Solver solver;
-    solver.nodes_list = nodes_list;
-    solver.output_nodes = outputs;
 
+    DPLLSolver DPLL_Solver;
+    DPLL_Solver.nodes_list_size = aig->maxvar+2;
+    DPLL_Solver.nodes_list = nodes_list;
+    DPLL_Solver.output_nodes = outputs;
+    /*Solver CDCL_Solver;
+    CDCL_Solver.nodes_list_size = aig->maxvar+2;
+    CDCL_Solver.nodes_list = nodes_list;
+    CDCL_Solver.output_nodes = outputs;*/
+
+
+
+    std::string benchmark_file_name = argv[1];
+    benchmark_file_name.erase(0, 47);
+    std::cout << "--- BENCHMARK: " << benchmark_file_name << " --- " << '\n';
+    std::cout << "Size of Node struct: " << sizeof(Node) << '\n';
     // track time
     std::chrono::time_point<std::chrono::system_clock> start_time = std::chrono::system_clock::now();
-    solver.run(aig->maxvar + 2);
-    std::chrono::time_point<std::chrono::system_clock> end_time = std::chrono::system_clock::now();
-    auto duration = end_time - start_time;
 
-    std::cout << "\nTime taken: " << duration << '\n';
+    DPLL_Solver.run();
+    //CDCL_Solver.run();
+
+
+    std::chrono::time_point<std::chrono::system_clock> end_time = std::chrono::system_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
+    double seconds = duration.count() / 1'000'000.0;
+    std::cout << "Number of Nodes: " << aig->maxvar+2 << '\n';
+    std::cout << "TOTAL TIME: " << std::setprecision(2) << seconds << '\n';
+    std::cout << "TOTAL CONFLICTS: " << DPLL_Solver.solver_conflicts << '\n';
+    std::cout << "TOTAL DECISIONS: " << DPLL_Solver.solver_decisions << '\n';
+    std::cout << "TOTAL PROPAGATIONS: " << DPLL_Solver.solver_propagations << '\n';
+
+    for (int i = 0; i < aig->maxvar + 2; i++) {
+        delete nodes_list[i];
+    }
+    delete[] nodes_list;
     aiger_reset(aig);
+
     return 0;
 
 }

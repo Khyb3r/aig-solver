@@ -9,10 +9,16 @@ set(AIGER_LIB_DIR "/Users/khyber/Documents/aiger-lib/aiger/lib")
 
 add_executable(my_solver main.cpp
         aig.h
-        Solver.h
-        Solver.cpp
+        CDCL/Solver.h
+        CDCL/Solver.cpp
         Arena.cpp
-        Arena.h)
+        Arena.h
+        tests/solver-functions-tests.cpp
+        DPLL/DPLLSolver.cpp
+        DPLL/DPLLSolver.h
+        tests/dpllTests.cpp
+        cdcl-aig.h
+        )
 
 # Add Aiger headers
 target_include_directories(my_solver PRIVATE ${AIGER_INCLUDE_DIR})
