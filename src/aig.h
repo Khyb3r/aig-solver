@@ -10,7 +10,7 @@ struct Edge {
 
 enum class NodeType {INPUT, AND};
 enum class Assignment {TRUE, FALSE, UNASSIGNED};
-
+enum class SavedPhase {TRUE, FALSE, NONE};
 struct Node {
     NodeType type;                                  // 4 bytes
     unsigned int variable_number;                   // 4 bytes
@@ -21,7 +21,7 @@ struct Node {
 
     std::vector<Node*> output_nodes;                // 16 bytes
 
-                                                    // Total: 64
+    SavedPhase saved_phase = SavedPhase::NONE;
 };
 
 #endif //AIG_H

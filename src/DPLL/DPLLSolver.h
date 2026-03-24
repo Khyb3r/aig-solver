@@ -37,6 +37,11 @@ public:
     Node* choose_largest_fanout();
     Node* and_gate_importance_scoring();
 
+    // Branching heuristic methods
+    inline void always_branch_true(Node*);
+    inline void phase_saving(Node*);
+
+
     void propogate(Node*);
 
     void propogate_forward_helper(Node*);

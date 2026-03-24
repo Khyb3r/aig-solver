@@ -20,6 +20,10 @@ void DPLLSolver::preprocess() {
             output.node->decision_level = 0;
             assignment_list.push_back(output.node);
             propagation_queue.push(output.node);
+
+            // Phase saving
+            if (output.node->type == NodeType::INPUT)
+                output.node->saved_phase = (required == Assignment::TRUE) ? SavedPhase::TRUE : SavedPhase::FALSE;
         }
         else if (output.node->assignment != required) {
             conflict = true;
@@ -84,11 +88,36 @@ Node* DPLLSolver::decide_node() {
     Node* chosen_node = and_gate_importance_scoring();
 
     if (chosen_node != nullptr) {
-        chosen_node->assignment = Assignment::TRUE;
-        chosen_node->decision_level = solver_decision_level;
+        //always_branch_true(chosen_node);
+        phase_saving(chosen_node);
     }
     return chosen_node;
 }
+
+inline void DPLLSolver::always_branch_true(Node* chosen_node) {
+    chosen_node->assignment = Assignment::TRUE;
+    chosen_node->decision_level = solver_decision_level;
+}
+
+void DPLLSolver::phase_saving(Node* chosen_node) {
+    if (chosen_node->saved_phase != SavedPhase::NONE) {
+        if (chosen_node->saved_phase == SavedPhase::TRUE) {
+            chosen_node->assignment = Assignment::TRUE;
+            chosen_node->decision_level = solver_decision_level;
+        }
+        else {
+            chosen_node->assignment = Assignment::FALSE;
+            chosen_node->decision_level = solver_decision_level;
+        }
+    }
+    // Always branch True currently
+    else {
+        chosen_node->assignment = Assignment::TRUE;
+        chosen_node->decision_level = solver_decision_level;
+        chosen_node->saved_phase = SavedPhase::TRUE;
+    }
+}
+
 
 Node *DPLLSolver::choose_first_unassigned() {
     for (int i = 0; i < nodes_list_size; i++) {
@@ -134,12 +163,12 @@ Node* DPLLSolver::and_gate_importance_scoring() {
                 bool true_value = other_node_edge->node == nullptr ? other_node_edge->inverted :
                                   (other_node_edge->node->assignment == Assignment::TRUE) ^ other_node_edge->inverted;
 
-                if (true_value) {
-                    score += 10;
+                if (other_node_edge->node == nullptr) {
+                    if (true_value) score += 10;
                 }
-                else if (other_node_edge->node->assignment == Assignment::UNASSIGNED) {
-                    // do nothing
-                    score += 4;
+                else {
+                    if (true_value) score += 10;
+                    else if (other_node_edge->node->assignment == Assignment::UNASSIGNED) score += 2;
                 }
             }
         }
@@ -150,6 +179,7 @@ Node* DPLLSolver::and_gate_importance_scoring() {
     }
     return best_node;
 }
+
 
 
 
@@ -189,6 +219,7 @@ void DPLLSolver::propogate_forward_helper(Node *a) {
                     output.decision_level = solver_decision_level;
                     assignment_list.push_back(&output);
                     propagation_queue.push(&output);
+
                 }
                 else if (output.assignment == Assignment::TRUE) {
                     // conflict
@@ -213,6 +244,7 @@ void DPLLSolver::propogate_forward_helper(Node *a) {
                         output.decision_level = solver_decision_level;
                         assignment_list.push_back(&output);
                         propagation_queue.push(&output);
+
                     }
                     else if (output.assignment == Assignment::FALSE) {
                         // conflict
@@ -251,6 +283,7 @@ void DPLLSolver::propogate_backward_helper(Node *curr) {
             first_input.node->decision_level = solver_decision_level;
             assignment_list.push_back(first_input.node);
             propagation_queue.push(first_input.node);
+
         }
         else if (!first_input_true && first_input_assigned) {
 
@@ -263,6 +296,7 @@ void DPLLSolver::propogate_backward_helper(Node *curr) {
             second_input.node->decision_level = solver_decision_level;
             assignment_list.push_back(second_input.node);
             propagation_queue.push(second_input.node);
+
         }
         else if (!second_input_true && second_input_assigned) {
             conflict = true;
@@ -287,6 +321,7 @@ void DPLLSolver::propogate_backward_helper(Node *curr) {
                 first_input.node->decision_level = solver_decision_level;
                 assignment_list.push_back(first_input.node);
                 propagation_queue.push(first_input.node);
+
             }
         }
 
@@ -296,6 +331,7 @@ void DPLLSolver::propogate_backward_helper(Node *curr) {
                 second_input.node->decision_level = solver_decision_level;
                 assignment_list.push_back(second_input.node);
                 propagation_queue.push(second_input.node);
+
             }
         }
     }
@@ -315,6 +351,10 @@ bool DPLLSolver::conflict_handler() {
             assignment_list.push_back(last_decision);
             propagation_queue.push(last_decision);
             decision_level_boundary_indexes.pop_back();
+
+            // Phase saving update
+            last_decision->saved_phase = SavedPhase::FALSE;
+
             conflict = false;
             return true;
         }

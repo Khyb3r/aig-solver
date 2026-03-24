@@ -4,8 +4,8 @@ import subprocess
 def relative_path(*parts):
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), *parts)
 
-#benchmark_file = relative_path("../Benchmarks/Structural-SAT-All-UNSAT/tip-k-ind-aigs-o1234g/O1/cmu.periodic.N.aig")
-benchmark_file = relative_path("../Benchmarks/Bit-Blasted-SMTs/smtqfbv-aigs/bitops0.aig")
+benchmark_file = relative_path("../Benchmarks/Structural-SAT-All-UNSAT/tip-k-ind-aigs-o1234g/O1/eijk.S953.S.aig")
+#benchmark_file = relative_path("../Benchmarks/Bit-Blasted-SMTs/smtqfbv-aigs/bitvec0.aig")
 program        = relative_path("../src/cmake-build-debug/./my_solver")
 
 abc_path = os.path.realpath(relative_path("../../berkeley-abc/abc/abc"))

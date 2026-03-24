@@ -13,10 +13,8 @@ add_executable(my_solver main.cpp
         CDCL/Solver.cpp
         Arena.cpp
         Arena.h
-        tests/solver-functions-tests.cpp
         DPLL/DPLLSolver.cpp
         DPLL/DPLLSolver.h
-        tests/dpllTests.cpp
         cdcl-aig.h
         )
 
