@@ -3,7 +3,6 @@
 #include <vector>
 
 struct Node;
-struct Clause;
 struct Edge {
     Node* node;                                    // 8 bytes
     bool inverted;                                 // 1 byte
@@ -20,21 +19,19 @@ struct Node {
     Assignment assignment = Assignment::UNASSIGNED; // 4 bytes
     unsigned int decision_level = -1;               // 4 bytes
 
-    Node* reason = nullptr;                         // 8 bytes
-    Node* reason_two = nullptr;                     // 8 bytes
-
-    //Clause* clause_reason = nullptr;                // 8 bytes
-
     std::vector<Node*> output_nodes;                // 16 bytes
+
+    bool visited_in_conflict = false;               // 1 byte
 };
 
 struct Literal {
     Node* node;
-    bool is_negated;
+    Assignment assignment;
 };
 
 struct Clause {
     std::vector<Literal> literals;
+    int max_decision_level = 0;
 };
 
 #endif //CDCL_AIG_H

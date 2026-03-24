@@ -56,7 +56,9 @@ bool Solver::run() {
         }
 
         if (conflict) {
-            if (!conflict_handler()) {
+            Clause cube = build_conflict_cube();
+            learned_cubes.push_back(cube);
+            if (!backjump_from_cube(cube)) {
                 std::cout << "UNSAT\n";
                 return false;
             }
@@ -129,6 +131,7 @@ void Solver::propogate_forward_helper(Node *a) {
                 else if (output.assignment == Assignment::TRUE) {
                     // conflict
                     conflict = true;
+                    conflict_node = &output;
                     return;
                 }
             }
@@ -153,6 +156,7 @@ void Solver::propogate_forward_helper(Node *a) {
                     else if (output.assignment == Assignment::FALSE) {
                         // conflict
                         conflict = true;
+                        conflict_node = &output;
                         return;
                     }
                 }
@@ -189,8 +193,8 @@ void Solver::propogate_backward_helper(Node *curr) {
             propagation_queue.push(first_input.node);
         }
         else if (!first_input_true && first_input_assigned) {
-
             conflict = true;
+            conflict_node = first_input.node;
             return;
         }
 
@@ -202,6 +206,7 @@ void Solver::propogate_backward_helper(Node *curr) {
         }
         else if (!second_input_true && second_input_assigned) {
             conflict = true;
+            conflict_node = second_input.node;
             return;
         }
     }
@@ -212,6 +217,7 @@ void Solver::propogate_backward_helper(Node *curr) {
         if (first_input_assigned && second_input_assigned) {
             if (first_input_true && second_input_true) {
                 conflict = true;
+                conflict_node = curr;
                 return;
             }
         }
@@ -269,4 +275,68 @@ inline void Solver::backtrack() {
         assignment_list.pop_back();
     }
     while (!propagation_queue.empty()) propagation_queue.pop();
+}
+
+Clause Solver::build_conflict_cube() {
+    Clause cube{};
+    std::stack<Node*> stack;
+    stack.push(conflict_node);
+
+    for (int i = 0 ; i < nodes_list_size; i++) {
+        nodes_list[i]->visited_in_conflict = false;
+    }
+
+
+    while (!stack.empty()) {
+        Node* node = stack.top();
+        stack.pop();
+        if (node->visited_in_conflict) continue;
+        node->visited_in_conflict = true;
+        if (node->type == NodeType::INPUT) {
+            cube.literals.push_back({node, node->assignment});
+            continue;
+        }
+        if (node->type == NodeType::AND) {
+            for (const Edge& input_edge : node->input_nodes) {
+                if (input_edge.node == nullptr || input_edge.node->assignment == Assignment::UNASSIGNED) continue;
+                if (check_relevance(input_edge)) {
+                    stack.push(input_edge.node);
+                }
+            }
+        }
+    }
+    return cube;
+}
+
+bool Solver::check_relevance(const Edge &input_edge) {
+    bool input_value = (input_edge.node == nullptr) ? input_edge.inverted : (input_edge.node->assignment == Assignment::TRUE) ^ input_edge.inverted;
+    if (input_edge.node->assignment == Assignment::TRUE) {
+        return (input_value == true);
+    }
+    if (input_edge.node->assignment == Assignment::FALSE) {
+        return (input_value == false);
+    }
+    return false;
+}
+
+bool Solver::backjump_from_cube(Clause &cube) {
+    if (cube.literals.empty()) return false;
+    int backjump_level = 0;
+    for (const Literal& lit : cube) {
+        if (lit.node == conflict_node) continue;
+        if (lit.node->decision_level > backjump_level) {
+            backjump_level = lit.node->decision_level;
+        }
+    }
+    if (backjump_level == 0) return false;
+
+    int level = decision_level_boundary_indexes[backjump_level];
+    while (assignment_list.size() > level) {
+        Node* removed_node = assignment_list.back();
+        removed_node->assignment = Assignment::UNASSIGNED;
+        removed_node->decision_level = -1;
+        assignment_list.pop_back();
+    }
+    while (!propagation_queue.empty()) propagation_queue.pop();
+    return true;
 }

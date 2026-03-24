@@ -11,7 +11,6 @@ public:
     std::vector<Node*> assignment_list;
     std::vector<int> decision_level_boundary_indexes;
     std::queue<Node*> propagation_queue;
-    std::vector<Clause> clause_db;
 
     int solver_decision_level = 0;
     bool conflict = false;
@@ -19,8 +18,11 @@ public:
     int nodes_list_size = 0;
 
     Node* conflict_node = nullptr;
-    Node* conflict_reason = nullptr;
-    Node* conflict_reason_two = nullptr;
+
+    std::vector<Clause> learned_cubes;
+    Clause build_conflict_cube();
+    bool backjump_from_cube(Clause&);
+    bool check_relevance(const Edge&);
 
     void preprocess();
     bool run();
@@ -34,18 +36,9 @@ public:
 
     void propogate_backward_helper(Node*);
 
-    inline void backtrack(int);
-
-    void clause_propogation();
-
     inline void backtrack();
 
     bool conflict_handler();
-
-    // -- THINGS TO ADD/CHANGE --
-    void backjump();
-    bool cdcl_conflict_handler();
-
 
 };
 

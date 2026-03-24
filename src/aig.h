@@ -21,7 +21,11 @@ struct Node {
 
     std::vector<Node*> output_nodes;                // 16 bytes
 
-    SavedPhase saved_phase = SavedPhase::NONE;
+    SavedPhase saved_phase = SavedPhase::NONE;      // 4 bytes
+
+    bool flipped = false;                           // 1 byte
+
+    double activity = 0.0;                          // 8 bytes
 };
 
 #endif //AIG_H
