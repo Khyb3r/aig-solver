@@ -8,6 +8,7 @@
 class DPLLSolver {
 public:
     Node** nodes_list;
+    std::vector<Node*> input_nodes;
     std::vector<Edge> output_nodes;
     std::vector<Node*> assignment_list;
     std::vector<int> decision_level_boundary_indexes;
@@ -25,6 +26,15 @@ public:
     int solver_conflicts = 0;
     int solver_propagations = 0;
     int solver_decisions = 0;
+
+    // Metrics for preprocess specific analysis
+    int solver_total_inputs = 0;
+    int solver_assigned_inputs = 0;
+    int solver_true_forced = 0;
+    int solver_false_forced = 0;
+    double solver_ands_forced = 0;
+
+
 
     // === CORE SOLVER METHODS ===
     void preprocess();
@@ -50,7 +60,11 @@ public:
 
     // Branching heuristic
     inline void always_branch_true(Node*);
+    inline void always_branch_false(Node*);
     inline void phase_saving(Node*);
+
+    void print_stats() const;
+    void print_preprocess_stats();
 
     // Mimicking VSIDS effect but on pure DPLL
     double solver_activity_increment = 1.0;

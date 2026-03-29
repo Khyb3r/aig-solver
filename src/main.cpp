@@ -90,6 +90,7 @@ int main(int argc, char **argv) {
     //memset(nodes_list, 0, sizeof(nodes_list));
 
     Node** nodes_list = new Node*[aig->maxvar + 2];
+    std::vector<Node*> input_nodes_list;
     memset(nodes_list, 0, sizeof(Node*) * (aig->maxvar + 2));
 
     // add input nodes to graph/circuit
@@ -102,6 +103,7 @@ int main(int argc, char **argv) {
         nodes_list[index]->variable_number = index;
         nodes_list[index]->input_nodes[0] = {nullptr, false};
         nodes_list[index]->input_nodes[1] = {nullptr, false};
+        input_nodes_list.push_back(nodes_list[index]);
     }
     // add AND nodes to graph/circuit
     for (int i = 0; i < aig->num_ands; i++) {
@@ -145,14 +147,14 @@ int main(int argc, char **argv) {
     }
 
     // print structure of AIG to ensure it is correct
-    printInternalAIG(nodes_list, outputs, aig->maxvar);
-    std::cout << "Amount of nodes" << aig->maxvar+2;
+    //printInternalAIG(nodes_list, outputs, aig->maxvar);
 
 
     DPLLSolver DPLL_Solver;
     DPLL_Solver.nodes_list_size = aig->maxvar+2;
     DPLL_Solver.nodes_list = nodes_list;
     DPLL_Solver.output_nodes = outputs;
+    DPLL_Solver.input_nodes = input_nodes_list;
     /*Solver CDCL_Solver;
     CDCL_Solver.nodes_list_size = aig->maxvar+2;
     CDCL_Solver.nodes_list = nodes_list;
@@ -161,9 +163,10 @@ int main(int argc, char **argv) {
 
 
     std::string benchmark_file_name = argv[1];
-    benchmark_file_name.erase(0, 47);
-    std::cout << "--- BENCHMARK: " << benchmark_file_name << " --- " << '\n';
+    benchmark_file_name.erase(0, 57);
+    std::cout << "BENCHMARK: " << benchmark_file_name << '\n';
     std::cout << "Size of Node struct: " << sizeof(Node) << '\n';
+    std::cout << "TOTAL NODES: " << aig->maxvar+2 << '\n';
     // track time
     std::chrono::time_point<std::chrono::system_clock> start_time = std::chrono::system_clock::now();
 
@@ -174,7 +177,6 @@ int main(int argc, char **argv) {
     std::chrono::time_point<std::chrono::system_clock> end_time = std::chrono::system_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
     double seconds = duration.count() / 1'000'000.0;
-    std::cout << "Number of Nodes: " << aig->maxvar+2 << '\n';
     std::cout << "TOTAL TIME: " << std::setprecision(2) << seconds << '\n';
     std::cout << "TOTAL CONFLICTS: " << DPLL_Solver.solver_conflicts << '\n';
     std::cout << "TOTAL DECISIONS: " << DPLL_Solver.solver_decisions << '\n';

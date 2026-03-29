@@ -34,16 +34,7 @@ void DPLLSolver::preprocess() {
         propogate(propagation_queue.front());
         propagation_queue.pop();
     }
-
-    // After propagation, print how many inputs are still unassigned
-    int unassigned_inputs = 0;
-    int assigned_inputs = 0;
-    for (int i = 0; i < nodes_list_size; i++) {
-        if (nodes_list[i] != nullptr && nodes_list[i]->type == NodeType::INPUT) {
-            if (nodes_list[i]->assignment == Assignment::UNASSIGNED) unassigned_inputs++;
-            else assigned_inputs++;
-        }
-    }
+    print_preprocess_stats();
 }
 
 void DPLLSolver::failed_literal_probing() {
@@ -122,7 +113,8 @@ void DPLLSolver::undo_probing(size_t before_size) {
 
 bool DPLLSolver::run() {
     preprocess();
-    failed_literal_probing();
+    //failed_literal_probing();
+    return true;
     if (conflict) {
         std::cout << "UNSAT" << '\n';
         return false;
@@ -160,12 +152,16 @@ Node* DPLLSolver::decide_node() {
     solver_decisions++;
 
     // Change decision heuristic here
+    Node* chosen_node = choose_first_unassigned();
     //Node* chosen_node = and_gate_importance_scoring();
-    Node* chosen_node = vsids_choose_node();
+    //Node* chosen_node = choose_largest_fanout();
+    //Node* chosen_node = vsids_choose_node();
 
 
     if (chosen_node != nullptr) {
+        //chosen_node->flipped = false;
         //always_branch_true(chosen_node);
+        //always_branch_false(chosen_node);
         phase_saving(chosen_node);
     }
     return chosen_node;
@@ -175,7 +171,10 @@ inline void DPLLSolver::always_branch_true(Node* chosen_node) {
     chosen_node->assignment = Assignment::TRUE;
     chosen_node->decision_level = solver_decision_level;
 }
-
+inline void DPLLSolver::always_branch_false(Node* chosen_node) {
+    chosen_node->assignment = Assignment::FALSE;
+    chosen_node->decision_level = solver_decision_level;
+}
 void DPLLSolver::phase_saving(Node* chosen_node) {
     if (chosen_node->saved_phase != SavedPhase::NONE) {
         if (chosen_node->saved_phase == SavedPhase::TRUE) {
@@ -189,14 +188,14 @@ void DPLLSolver::phase_saving(Node* chosen_node) {
     }
     // Always branch True currently
     else {
-        chosen_node->assignment = Assignment::FALSE;
+        chosen_node->assignment = Assignment::TRUE;
         chosen_node->decision_level = solver_decision_level;
-        chosen_node->saved_phase = SavedPhase::FALSE;
+        chosen_node->saved_phase = SavedPhase::TRUE;
     }
 }
 
 
-Node *DPLLSolver::choose_first_unassigned() {
+Node* DPLLSolver::choose_first_unassigned() {
     for (int i = 0; i < nodes_list_size; i++) {
         Node* node = nodes_list[i];
         if (node != nullptr && node->type == NodeType::INPUT && node->assignment == Assignment::UNASSIGNED) {
@@ -289,9 +288,6 @@ Node *DPLLSolver::vsids_choose_node() {
     }
     return best_node;
 }
-
-
-
 
 void DPLLSolver::propogate(Node *a) {
     solver_propagations++;
@@ -464,27 +460,31 @@ bool DPLLSolver::conflict_handler() {
     // Flip Decision and push back onto propagation queue
     solver_conflicts++;
     // Tweak this if necessary
-    if (solver_conflicts % 100 == 0) {
-        decay_every_N_conflicts();
-    }
+    //if (solver_conflicts % 100 == 0) {
+    //    decay_every_N_conflicts();
+    //}
     while (true) {
         if (solver_decision_level == 0 || decision_level_boundary_indexes.empty()) return false;
+        backtrack();
+        // Use index in assignment list from boundaries index to get last decision
         Node* last_decision = assignment_list[decision_level_boundary_indexes.back()];
+        assignment_list.pop_back();
         if (!last_decision->flipped) {
-            Assignment flip_to = (last_decision->assignment == Assignment::TRUE) ? Assignment::FALSE : Assignment::TRUE;
-            backtrack();
+            last_decision->assignment = (last_decision->assignment == Assignment::TRUE) ? Assignment::FALSE : Assignment::TRUE;
+            last_decision->decision_level = solver_decision_level;
             last_decision->flipped = true;
-            last_decision->assignment = flip_to;
-            // Phase saving update
-            last_decision->saved_phase =(flip_to == Assignment::TRUE) ? SavedPhase::TRUE : SavedPhase::FALSE;
+
+            // Add Phase Saving
+            last_decision->saved_phase = (last_decision->assignment == Assignment::TRUE) ? SavedPhase::TRUE : SavedPhase::FALSE;
             assignment_list.push_back(last_decision);
             propagation_queue.push(last_decision);
-            decision_level_boundary_indexes.pop_back();
             conflict = false;
             return true;
         }
         // Purge one decision further back
-        backtrack();
+        last_decision->assignment = Assignment::UNASSIGNED;
+        last_decision->decision_level = -1;
+        last_decision->flipped = false;
         decision_level_boundary_indexes.pop_back();
         solver_decision_level--;
     }
@@ -492,11 +492,11 @@ bool DPLLSolver::conflict_handler() {
 }
 
 inline void DPLLSolver::backtrack() {
-    while (assignment_list.size() > decision_level_boundary_indexes.back()) {
+    size_t stop = decision_level_boundary_indexes.back() + 1;
+    while (assignment_list.size() > stop) {
         Node* removed_node = assignment_list.back();
         removed_node->assignment = Assignment::UNASSIGNED;
         removed_node->decision_level = -1;
-        removed_node->flipped = false;
         assignment_list.pop_back();
     }
     while (!propagation_queue.empty()) propagation_queue.pop();
@@ -512,4 +512,40 @@ void DPLLSolver::decay_every_N_conflicts() {
         if (nodes_list[i] != nullptr)
             nodes_list[i]->activity *= solver_activity_decay;
     }
+}
+
+void DPLLSolver::print_stats() const {
+    std::cout << "TOTAL DECISIONS: " << solver_decisions << '\n';
+    std::cout << "TOTAL CONFLICTS: " << solver_conflicts << '\n';
+    std::cout << "TOTAL PROPAGATIONS: " << solver_propagations << '\n';
+}
+
+void DPLLSolver::print_preprocess_stats() {
+    int total_and_gates = 0;
+    // Calculate statistics for how our preprocessing was (used for comparison)
+    for (int i = 0; i < nodes_list_size; i++) {
+        if (nodes_list[i] == nullptr) continue;
+        if (nodes_list[i]->type == NodeType::INPUT) {
+            solver_total_inputs++;
+            if (nodes_list[i]->assignment != Assignment::UNASSIGNED) {
+                solver_assigned_inputs++;
+                if (nodes_list[i]->assignment == Assignment::TRUE) {
+                    solver_true_forced++;
+                }
+                else {
+                    solver_false_forced++;
+                }
+            }
+        }
+        else if (nodes_list[i]->type == NodeType::AND) {
+            total_and_gates++;
+            if (nodes_list[i]->assignment != Assignment::UNASSIGNED) solver_ands_forced++;
+        }
+    }
+
+    std::cout << "TOTAL INPUTS: " << solver_total_inputs << '\n';
+    std::cout << "INPUTS ASSIGNED: " << solver_assigned_inputs << '\n';
+    std::cout << "TRUE FORCED: " << solver_true_forced << '\n';
+    std::cout << "FALSE FORCED: " << solver_false_forced << '\n';
+    std::cout << "ANDS FORCED: " << (100.0 * solver_ands_forced/total_and_gates) << '\n';
 }

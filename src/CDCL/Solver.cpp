@@ -322,7 +322,7 @@ bool Solver::check_relevance(const Edge &input_edge) {
 bool Solver::backjump_from_cube(Clause &cube) {
     if (cube.literals.empty()) return false;
     int backjump_level = 0;
-    for (const Literal& lit : cube) {
+    for (const Literal& lit : cube.literals) {
         if (lit.node == conflict_node) continue;
         if (lit.node->decision_level > backjump_level) {
             backjump_level = lit.node->decision_level;

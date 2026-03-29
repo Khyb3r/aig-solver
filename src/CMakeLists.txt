@@ -16,7 +16,7 @@ add_executable(my_solver main.cpp
         DPLL/DPLLSolver.cpp
         DPLL/DPLLSolver.h
         cdcl-aig.h
-        )
+)
 
 # Add Aiger headers
 target_include_directories(my_solver PRIVATE ${AIGER_INCLUDE_DIR})
