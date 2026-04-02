@@ -54,3 +54,4 @@ Benchmarks/
 .aag
 .aig
 logs/
+cadical-cnf-conversions/

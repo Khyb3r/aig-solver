@@ -52,6 +52,7 @@ public:
     // Preprocessing heuristic to cut search space heavily
     void failed_literal_probing();
     void undo_probing(size_t);
+    void remove_irrelevant_inputs();
 
     // Node Choice Heuristics
     Node* choose_first_unassigned();

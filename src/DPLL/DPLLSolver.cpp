@@ -1,6 +1,7 @@
 #include "DPLLSolver.h"
 
 #include <iostream>
+#include <unordered_set>
 
 void DPLLSolver::preprocess() {
     for (int i = 0; i < output_nodes.size(); i++) {
@@ -34,8 +35,42 @@ void DPLLSolver::preprocess() {
         propogate(propagation_queue.front());
         propagation_queue.pop();
     }
-    print_preprocess_stats();
 }
+
+void DPLLSolver::remove_irrelevant_inputs() {
+    // Go backwards up the graph from the output/s and remove/mark nodes that aren't directly relevant to the output
+
+    // Initialise by starting from outputs
+    std::stack<Node*> node_stack;
+    std::unordered_set<Node*> reachable_nodes;
+    for (const auto& output_edge : output_nodes) {
+        if (output_edge.node != nullptr) {
+            node_stack.push(output_edge.node);
+            reachable_nodes.insert(output_edge.node);
+        }
+    }
+
+    // Traverse back and add nodes that are directly related to output
+    while (!node_stack.empty()) {
+        Node* curr = node_stack.top();
+        node_stack.pop();
+        if (curr->type != NodeType::AND) continue;
+        for (const Edge& edge : curr->input_nodes) {
+            Node* input_node = edge.node;
+            if (input_node != nullptr && reachable_nodes.insert(input_node).second) {
+                node_stack.push(input_node);
+            }
+        }
+    }
+
+    for (int i = 0; i < nodes_list_size; i++) {
+        if (reachable_nodes.count(nodes_list[i])) {
+            nodes_list[i]->active = true;
+        }
+    }
+}
+
+
 
 void DPLLSolver::failed_literal_probing() {
     for (int i = 0; i < nodes_list_size; i++) {
@@ -113,8 +148,9 @@ void DPLLSolver::undo_probing(size_t before_size) {
 
 bool DPLLSolver::run() {
     preprocess();
-    //failed_literal_probing();
-    return true;
+    failed_literal_probing();
+    //print_preprocess_stats();
+    //return true;
     if (conflict) {
         std::cout << "UNSAT" << '\n';
         return false;
