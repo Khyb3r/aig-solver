@@ -6,8 +6,8 @@ def relative_path(*parts):
 
 #benchmark_file = relative_path("../Benchmarks/Sequential-Unrolled/tip-aig-20061215/texas.parsesys^1.E.aig")
 #benchmark_file = relative_path("../Benchmarks/Structural-SAT-All-UNSAT/tip-k-ind-aigs-o1234g/O4/texas.parsesys^2.E.aig")
-benchmark_file = relative_path("../Benchmarks/Bit-Blasted-SMTs/smtqfbv-aigs/testcase15.stp.aig")
-program        = relative_path("../src/cmake-build-debug/./my_solver")
+benchmark_file = relative_path("../Benchmarks/Bit-Blasted-SMTs/smtqfbv-aigs/mult_ub_8x8_1.sf.aig")
+program        = relative_path("../src/cmake-build-release/./my_solver")
 logs_path = relative_path("../logs/Bit-Blasted-Runs/run_01/raw")
 abc_path = os.path.realpath(relative_path("../../berkeley-abc/abc/abc"))
 

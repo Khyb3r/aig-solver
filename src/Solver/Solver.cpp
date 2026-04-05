@@ -51,7 +51,7 @@ void Solver::compute_active_inputs() {
             node_stack.push_back(node);
             reachable_nodes.insert(node);
             // Mark node as active (directly part of aig and influences output in some way)
-            node->active = true;
+            node->flipped_and_active_field = SET_NODE_ACTIVE(node->flipped_and_active_field);
         }
     }
 
@@ -65,7 +65,7 @@ void Solver::compute_active_inputs() {
             if (input_node != nullptr && reachable_nodes.insert(input_node).second) {
                 node_stack.push_back(input_node);
                 // Mark node as active (directly part of aig and influences output in some way)
-                input_node->active = true;
+                input_node->flipped_and_active_field = SET_NODE_ACTIVE(input_node->flipped_and_active_field);
             }
         }
     }
@@ -518,10 +518,10 @@ bool Solver::conflict_handler() {
         // Use index in assignment list from boundaries index to get last decision
         Node* last_decision = assignment_list[decision_level_boundary_indexes.back()];
         assignment_list.pop_back();
-        if (!last_decision->flipped) {
+        if (!NODE_FLIPPED_TRUE(last_decision->flipped_and_active_field)) {
             last_decision->assignment = (last_decision->assignment == Assignment::TRUE) ? Assignment::FALSE : Assignment::TRUE;
             last_decision->decision_level = solver_decision_level;
-            last_decision->flipped = true;
+            last_decision->flipped_and_active_field = SET_NODE_FLIPPED(last_decision->flipped_and_active_field);
 
             // Add Phase Saving
             last_decision->saved_phase = (last_decision->assignment == Assignment::TRUE) ? SavedPhase::TRUE : SavedPhase::FALSE;
@@ -533,7 +533,7 @@ bool Solver::conflict_handler() {
         // Purge one decision further back
         last_decision->assignment = Assignment::UNASSIGNED;
         last_decision->decision_level = -1;
-        last_decision->flipped = false;
+        last_decision->flipped_and_active_field = CLEAR_NODE_FLIPPED(last_decision->flipped_and_active_field);
         decision_level_boundary_indexes.pop_back();
         solver_decision_level--;
     }
@@ -606,8 +606,8 @@ void Solver::print_compute_active_inputs_stats() {
     for (int i = 0; i < nodes_list_size; i++) {
         Node* node = nodes_list[i];
         if (node == nullptr) continue;
-        if (node->active) total_active_nodes++;
-        if (node->type == NodeType::INPUT && node->active) total_input_nodes_active++;
+        if (NODE_ACTIVE_TRUE(node->flipped_and_active_field)) total_active_nodes++;
+        if (node->type == NodeType::INPUT && NODE_ACTIVE_TRUE(node->flipped_and_active_field)) total_input_nodes_active++;
     }
     double percent_nodes_active =  (100.0 * total_active_nodes / actual_total_nodes);
     std::cout << "PERCENT OF NODES ACTIVE: " << percent_nodes_active << '\n';

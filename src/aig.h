@@ -44,12 +44,11 @@ struct Node {
     NodeType type;                                  // 1 byte
     Assignment assignment = Assignment::UNASSIGNED; // 1 byte
     SavedPhase saved_phase = SavedPhase::NONE;      // 1 byte
-    bool flipped = false;                           // 1 byte
+    uint8_t flipped_and_active_field = 0;           // 1 byte           // 4
     unsigned int variable_number;                   // 4 bytes
     int decision_level = -1;                        // 4 bytes
-    float activity = 0.0;                           // 4 bytes
-    Edge input_nodes[2];                            // 16 bytes
-    std::vector<Node*> output_nodes;                // 24 bytes
-    bool active = false;                            // 1 byte
+    float activity = 0.0;                           // 4 bytes          // 12
+    Edge input_nodes[2];                            // 16 bytes         // 16
+    std::vector<Node*> output_nodes;                // 24 bytes         // 24
 };
 #endif //AIG_H
