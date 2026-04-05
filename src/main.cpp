@@ -9,7 +9,7 @@
 
 // Round up to the nearest multiple of align so the arena doesn't run out of memory due to Node not being a
 // multiple of DEFAULT_ALIGNMENT
-#define ALIGNED_SIZE(size, align) (((size) + (align) - 1) & (~(align) - 1))
+#define ALIGNED_SIZE(size, align) (((size) + (align) - 1) & ~((align) - 1))
 #define NODE_ALIGNED_SIZE ALIGNED_SIZE(sizeof(Node), DEFAULT_ALIGNMENT)
 
 // import aiger library - use extern C to disable name mangling
@@ -92,7 +92,7 @@ int main(int argc, char **argv) {
 
     //Node* nodes_list[aig->maxvar + 2];
     //memset(nodes_list, 0, sizeof(nodes_list));
-
+    std::cout << NODE_ALIGNED_SIZE << '\n';
     // Node Pointer memory
     Node** nodes_list = new Node*[aig->maxvar + 2];
     std::vector<Node*> input_nodes_list;

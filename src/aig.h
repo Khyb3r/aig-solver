@@ -12,7 +12,6 @@
 #define CLEAR_NODE_ACTIVE(x) ((x) & ~(1 << 1))
 #define CLEAR_NODE_FLIPPED(x) ((x) & ~(1 << 0))
 
-#define CLEAR_LOWER_THREE_BITS(x) (x)
 
 
 struct Node;
@@ -35,20 +34,20 @@ struct NewEdge {
 };
 
 // Force Enums to 1 byte rather than 4 byte default
-enum class NodeType {INPUT, AND};
-enum class Assignment {TRUE, FALSE, UNASSIGNED};
-enum class SavedPhase {TRUE, FALSE, NONE};
+enum class NodeType : uint8_t {INPUT, AND};
+enum class Assignment : uint8_t {TRUE, FALSE, UNASSIGNED};
+enum class SavedPhase : uint8_t {TRUE, FALSE, NONE};
 
 struct Node {
     NodeType type;                                  // 1 byte
-    unsigned int variable_number;                   // 4 bytes
-    Edge input_nodes[2];                            // 32 bytes
     Assignment assignment = Assignment::UNASSIGNED; // 1 byte
-    int decision_level = -1;                        // 4 bytes
-    std::vector<Node*> output_nodes;                // 24 bytes
     SavedPhase saved_phase = SavedPhase::NONE;      // 1 byte
     bool flipped = false;                           // 1 byte
-    float activity = 0.0;                           // 8 bytes
+    unsigned int variable_number;                   // 4 bytes
+    int decision_level = -1;                        // 4 bytes
+    float activity = 0.0;                           // 4 bytes
+    Edge input_nodes[2];                            // 32 bytes
+    std::vector<Node*> output_nodes;                // 24 bytes
     bool active = false;                            // 1 byte
 };
 #endif //AIG_H
