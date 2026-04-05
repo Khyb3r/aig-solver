@@ -5,6 +5,7 @@
 #include <__filesystem/recursive_directory_iterator.h>
 
 #include "Solver/Solver.h"
+#include "Arena.h"
 
 // import aiger library - use extern C to disable name mangling
 extern "C" {
@@ -87,16 +88,22 @@ int main(int argc, char **argv) {
     //Node* nodes_list[aig->maxvar + 2];
     //memset(nodes_list, 0, sizeof(nodes_list));
 
+    // Node Pointer memory
     Node** nodes_list = new Node*[aig->maxvar + 2];
     std::vector<Node*> input_nodes_list;
     memset(nodes_list, 0, sizeof(Node*) * (aig->maxvar + 2));
+
+    // AIG arena
+    size_t nodes_arena_size = sizeof(Node) * (aig->maxvar + 2);
+    void* arena_buffer = malloc(nodes_arena_size);
+    Arena<Node> nodes_arena(arena_buffer, nodes_arena_size);
 
     // add input nodes to graph/circuit
     for (int i = 0; i < aig->num_inputs; i++) {
         const aiger_symbol& input_node = aig->inputs[i];
         const unsigned index = input_node.lit >> 1;
-        // allocate space for the new node on heap for now (Arena allocator will be used)
-        nodes_list[index] = new Node();
+        // Allocate memory and initialise node using the arena
+        nodes_list[index] = nodes_arena.alloc();
         nodes_list[index]->type = NodeType::INPUT;
         nodes_list[index]->variable_number = index;
         nodes_list[index]->input_nodes[0] = {nullptr, false};
@@ -108,8 +115,8 @@ int main(int argc, char **argv) {
         const aiger_and& and_node = aig->ands[i];
         const unsigned index = and_node.lhs >> 1;
 
-        // allocate space for the new node on heap for now (Arena allocator will be used)
-        nodes_list[index] = new Node();
+        // Allocate memory and initialise node using the arena
+        nodes_list[index] = nodes_arena.alloc();
         nodes_list[index]->type = NodeType::AND;
         nodes_list[index]->variable_number = index;
 
@@ -173,9 +180,15 @@ int main(int argc, char **argv) {
     std::cout << "TOTAL DECISIONS: " << Solver.solver_decisions << '\n';
     std::cout << "TOTAL PROPAGATIONS: " << Solver.solver_propagations << '\n';
 
-    for (int i = 0; i < aig->maxvar + 2; i++) {
-        delete nodes_list[i];
-    }
+
+    /* leaking this memory here doesn't matter
+    // Cleanup node as it has internal vector
+    for (int i = 0 ; i < aig->maxvar+2; i++) {
+        if (nodes_list[i] != nullptr) {
+            nodes_list[i]->~Node();
+        }
+    } */
+    free(arena_buffer);
     delete[] nodes_list;
     aiger_reset(aig);
 

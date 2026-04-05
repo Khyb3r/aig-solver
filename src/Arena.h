@@ -30,21 +30,21 @@ public:
                                                                       curr_offset(0) {}
 
     T* alloc() {
-        T* ptr =  allocate_align(sizeof(T), DEFAULT_ALIGNMENT);
+        T* ptr =  static_cast<T*>(allocate_align(sizeof(T), DEFAULT_ALIGNMENT));
         assert(ptr != nullptr);
         return new (ptr) T();
     }
 
     void* allocate_align(size_t size, size_t align) {
-        uintptr_t curr = this->buffer + this->curr_offset;
+        uintptr_t curr = reinterpret_cast<uintptr_t>(this->buffer + this->curr_offset);
         uintptr_t offset = align_forward(curr, align);
-        offset -= this->buffer;
+        offset -= reinterpret_cast<uintptr_t>(this->buffer);
 
         if (offset + size <= this->buffer_length) {
             void* pointer = &this->buffer[offset];
             this->prev_offset = offset;
             this->curr_offset = offset + size;
-            memset(pointer, 0, size);
+            // memset(pointer, 0, size); new keyword in alloc will already handle this essentially
             return pointer;
         }
         return nullptr;
