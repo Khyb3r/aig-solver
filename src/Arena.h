@@ -32,11 +32,15 @@ public:
     T* alloc() {
         T* ptr =  static_cast<T*>(allocate_align(sizeof(T), DEFAULT_ALIGNMENT));
         assert(ptr != nullptr);
+        if (!ptr) {
+            std::cerr << "Arena out of memory!\n";
+            exit(1);
+        }
         return new (ptr) T();
     }
 
     void* allocate_align(size_t size, size_t align) {
-        uintptr_t curr = reinterpret_cast<uintptr_t>(this->buffer + this->curr_offset);
+        uintptr_t curr = reinterpret_cast<uintptr_t>(this->buffer) + this->curr_offset;
         uintptr_t offset = align_forward(curr, align);
         offset -= reinterpret_cast<uintptr_t>(this->buffer);
 
@@ -44,7 +48,7 @@ public:
             void* pointer = &this->buffer[offset];
             this->prev_offset = offset;
             this->curr_offset = offset + size;
-            // memset(pointer, 0, size); new keyword in alloc will already handle this essentially
+            memset(pointer, 0, size);
             return pointer;
         }
         return nullptr;

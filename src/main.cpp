@@ -7,6 +7,11 @@
 #include "Solver/Solver.h"
 #include "Arena.h"
 
+// Round up to the nearest multiple of align so the arena doesn't run out of memory due to Node not being a
+// multiple of DEFAULT_ALIGNMENT
+#define ALIGNED_SIZE(size, align) (((size) + (align) - 1) & (~(align) - 1))
+#define NODE_ALIGNED_SIZE ALIGNED_SIZE(sizeof(Node), DEFAULT_ALIGNMENT)
+
 // import aiger library - use extern C to disable name mangling
 extern "C" {
     #include "aiger.h"
@@ -94,7 +99,8 @@ int main(int argc, char **argv) {
     memset(nodes_list, 0, sizeof(Node*) * (aig->maxvar + 2));
 
     // AIG arena
-    size_t nodes_arena_size = sizeof(Node) * (aig->maxvar + 2);
+    // Use NODE_ALIGNED_SIZE to round to next 16 byte multiple
+    size_t nodes_arena_size = NODE_ALIGNED_SIZE * (aig->maxvar + 2);
     void* arena_buffer = malloc(nodes_arena_size);
     Arena<Node> nodes_arena(arena_buffer, nodes_arena_size);
 
@@ -181,13 +187,13 @@ int main(int argc, char **argv) {
     std::cout << "TOTAL PROPAGATIONS: " << Solver.solver_propagations << '\n';
 
 
-    /* leaking this memory here doesn't matter
+
     // Cleanup node as it has internal vector
     for (int i = 0 ; i < aig->maxvar+2; i++) {
         if (nodes_list[i] != nullptr) {
             nodes_list[i]->~Node();
         }
-    } */
+    }
     free(arena_buffer);
     delete[] nodes_list;
     aiger_reset(aig);
