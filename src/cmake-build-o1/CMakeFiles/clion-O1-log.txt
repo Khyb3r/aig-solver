@@ -1,0 +1,4 @@
+/Applications/CLion.app/Contents/bin/cmake/mac/aarch64/bin/cmake -DCMAKE_BUILD_TYPE=Release "-DCMAKE_CXX_FLAGS_RELEASE=-O1 -march=native -DNDEBUG" -G "Unix Makefiles" -DPython_EXECUTABLE=/Users/khyber/Documents/ostep/ostep-hw/hw13-TLBs/venv/bin/python -DPython3_EXECUTABLE=/Users/khyber/Documents/ostep/ostep-hw/hw13-TLBs/venv/bin/python -S /Users/khyber/Documents/aig-solver/src -B /Users/khyber/Documents/aig-solver/src/cmake-build-o1
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /Users/khyber/Documents/aig-solver/src/cmake-build-o1

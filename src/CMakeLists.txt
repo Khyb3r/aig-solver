@@ -2,20 +2,16 @@ cmake_minimum_required(VERSION 3.29)
 project(my_solver)
 
 set(CMAKE_CXX_STANDARD 20)
-
 # Aiger Library location
 set(AIGER_INCLUDE_DIR "/Users/khyber/Documents/aiger-lib/aiger/include")
 set(AIGER_LIB_DIR "/Users/khyber/Documents/aiger-lib/aiger/lib")
 
 add_executable(my_solver main.cpp
         aig.h
-        CDCL/Solver.h
-        CDCL/Solver.cpp
         Arena.cpp
         Arena.h
-        DPLL/DPLLSolver.cpp
-        DPLL/DPLLSolver.h
-        cdcl-aig.h
+        Solver/Solver.cpp
+        Solver/Solver.h
 )
 
 # Add Aiger headers

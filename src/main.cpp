@@ -4,9 +4,7 @@
 #include <chrono>
 #include <__filesystem/recursive_directory_iterator.h>
 
-
-//#include "CDCL/Solver.h"
-#include "DPLL/DPLLSolver.h"
+#include "Solver/Solver.h"
 
 // import aiger library - use extern C to disable name mangling
 extern "C" {
@@ -149,18 +147,11 @@ int main(int argc, char **argv) {
     // print structure of AIG to ensure it is correct
     //printInternalAIG(nodes_list, outputs, aig->maxvar);
 
-
-    DPLLSolver DPLL_Solver;
-    DPLL_Solver.nodes_list_size = aig->maxvar+2;
-    DPLL_Solver.nodes_list = nodes_list;
-    DPLL_Solver.output_nodes = outputs;
-    DPLL_Solver.input_nodes = input_nodes_list;
-    /*Solver CDCL_Solver;
-    CDCL_Solver.nodes_list_size = aig->maxvar+2;
-    CDCL_Solver.nodes_list = nodes_list;
-    CDCL_Solver.output_nodes = outputs;*/
-
-
+    Solver Solver;
+    Solver.nodes_list_size = aig->maxvar+2;
+    Solver.nodes_list = nodes_list;
+    Solver.output_nodes = outputs;
+    Solver.input_nodes = input_nodes_list;
 
     std::string benchmark_file_name = argv[1];
     benchmark_file_name.erase(0, 57);
@@ -170,7 +161,7 @@ int main(int argc, char **argv) {
     // track time
     std::chrono::time_point<std::chrono::system_clock> start_time = std::chrono::system_clock::now();
 
-    DPLL_Solver.run();
+    Solver.run();
     //CDCL_Solver.run();
 
 
@@ -178,9 +169,9 @@ int main(int argc, char **argv) {
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
     double seconds = duration.count() / 1'000'000.0;
     std::cout << "TOTAL TIME: " << std::setprecision(2) << seconds << '\n';
-    std::cout << "TOTAL CONFLICTS: " << DPLL_Solver.solver_conflicts << '\n';
-    std::cout << "TOTAL DECISIONS: " << DPLL_Solver.solver_decisions << '\n';
-    std::cout << "TOTAL PROPAGATIONS: " << DPLL_Solver.solver_propagations << '\n';
+    std::cout << "TOTAL CONFLICTS: " << Solver.solver_conflicts << '\n';
+    std::cout << "TOTAL DECISIONS: " << Solver.solver_decisions << '\n';
+    std::cout << "TOTAL PROPAGATIONS: " << Solver.solver_propagations << '\n';
 
     for (int i = 0; i < aig->maxvar + 2; i++) {
         delete nodes_list[i];
@@ -189,5 +180,4 @@ int main(int argc, char **argv) {
     aiger_reset(aig);
 
     return 0;
-
 }

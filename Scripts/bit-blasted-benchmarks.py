@@ -77,14 +77,14 @@ my_solver_path = relative_path("../src/cmake-build-debug/./my_solver")
 abc_path = os.path.realpath(relative_path("../../berkeley-abc/abc/abc"))
 cadical_path = os.path.realpath(relative_path("../../cadical-lib/cadical/build"))
 
-logs_base_path = relative_path("../logs/Structural-All-UNSAT-Runs/run_02")
+logs_base_path = relative_path("../logs/Structural-All-UNSAT-Runs/run_03")
 logs_json_path = os.path.join(logs_base_path, "run.json")
 logs_raw_path = os.path.join(logs_base_path, "raw")
 
 os.makedirs(logs_raw_path, exist_ok=True)
 
 run_data = {
-    "run_id": "run_02-preprocessingwith-failedlitprobing",
+    "run_id": "run_03-different-compiler-optimisations-comparison",
     "benchmarks": []
 }
 
@@ -100,16 +100,14 @@ with os.scandir(benchmarks_path) as entries:
                 try:
                     solver_process = subprocess.run([my_solver_path, file.path], capture_output=True, text=True, check=True, timeout=10)
                     solver_output = solver_process.stdout
-                    parsed_solver = parse_preprocessing_output(solver_output)
+                    parsed_solver = parse_my_solver_output(solver_output)
                     benchmark_entry["preprocessing"] = parsed_solver
                 except subprocess.TimeoutExpired:
                     solver_output = ""
                     benchmark_entry["preprocessing"] = {
-                        "total_inputs": None,
-                        "inputs_assigned": None,
-                        "true_forced": None,
-                        "false_forced": None,
-                        "ands_forced_percent": None,
+                        "benchmark": None,
+                        "result": None,
+                        "time": None
                     }
                 raw_log_file = os.path.join(logs_raw_path, f"{file.name}.log")
                 with open(raw_log_file, "w") as f:

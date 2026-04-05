@@ -55,3 +55,4 @@ Benchmarks/
 .aig
 logs/
 cadical-cnf-conversions/
+src/entitlements.plist

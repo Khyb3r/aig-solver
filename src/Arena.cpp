@@ -1,1 +1,2 @@
-#include "Arena.h"
+#include "aig.h"
+Node test;
