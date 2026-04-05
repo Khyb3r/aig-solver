@@ -28,8 +28,8 @@ void printInternalAIG(Node* nodes_list[], std::vector<Edge>& outputs, unsigned m
         if (n->type == NodeType::AND) {
             for (int j = 0; j < 2; j++) {
                 Edge& e = n->input_nodes[j];
-                std::cout << "  Input " << j << " -> Node " << e.node->variable_number
-                          << (e.inverted ? " (inverted)" : "") << "\n";
+                std::cout << "  Input " << j << " -> Node " << e.node()->variable_number
+                          << (e.inverted() ? " (inverted)" : "") << "\n";
             }
         }
 
@@ -44,11 +44,11 @@ void printInternalAIG(Node* nodes_list[], std::vector<Edge>& outputs, unsigned m
     for (int i = 0; i < outputs.size(); i++) {
         Edge& e = outputs[i];
         std::cout << "Output " << i << " -> ";
-        if (e.node == nullptr) {
-            std::cout << (e.inverted ? "CONST 1" : "CONST 0");
+        if (e.node() == nullptr) {
+            std::cout << (e.inverted() ? "CONST 1" : "CONST 0");
         } else {
-            std::cout << "Node " << e.node->variable_number;
-            if (e.inverted) std::cout << " (inverted)";
+            std::cout << "Node " << e.node()->variable_number;
+            if (e.inverted()) std::cout << " (inverted)";
         }
         std::cout << '\n';
     }
@@ -133,10 +133,10 @@ int main(int argc, char **argv) {
         nodes_list[index]->input_nodes[0] = edge_from_literal(and_node.rhs0, nodes_list);
         nodes_list[index]->input_nodes[1] = edge_from_literal(and_node.rhs1, nodes_list);
 
-        if (nodes_list[index]->input_nodes[0].node != nullptr)
-            nodes_list[index]->input_nodes[0].node->output_nodes.push_back(nodes_list[index]);
-        if (nodes_list[index]->input_nodes[1].node != nullptr)
-            nodes_list[index]->input_nodes[1].node->output_nodes.push_back(nodes_list[index]);
+        if (nodes_list[index]->input_nodes[0].node() != nullptr)
+            nodes_list[index]->input_nodes[0].node()->output_nodes.push_back(nodes_list[index]);
+        if (nodes_list[index]->input_nodes[1].node() != nullptr)
+            nodes_list[index]->input_nodes[1].node()->output_nodes.push_back(nodes_list[index]);
     }
 
     // outputs
@@ -145,16 +145,11 @@ int main(int argc, char **argv) {
         unsigned index = aig->outputs[i].lit >> 1;
         bool inverted = (aig->outputs[i].lit & 1) != 0;
         // (Arena allocator will be used)
-        Edge output{};
-        if (aig->outputs[i].lit == 0) output = {nullptr, false};
-        else if (aig->outputs[i].lit == 1) output = {nullptr, true};
+        if (aig->outputs[i].lit == 0) outputs.push_back(Edge(nullptr, false));
+        else if (aig->outputs[i].lit == 1) outputs.push_back(Edge(nullptr, true));
         else {
-            output = {
-                .node = nodes_list[aig->outputs[i].lit >> 1],
-                .inverted = (aig->outputs[i].lit & 1) != 0
-            };
+            outputs.push_back(Edge(nodes_list[aig->outputs[i].lit >> 1], (aig->outputs[i].lit & 1) != 0));
         }
-        outputs.push_back(output);
     }
 
     // print structure of AIG to ensure it is correct

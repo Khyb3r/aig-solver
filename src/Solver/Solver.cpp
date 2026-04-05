@@ -5,27 +5,27 @@
 void Solver::preprocess() {
     for (int i = 0; i < output_nodes.size(); i++) {
         Edge& output = output_nodes[i];
-        if (output.node == nullptr) {
-            if (!output.inverted) {
+        if (output.node() == nullptr) {
+            if (!output.inverted()) {
                 conflict = true;
                 return;
             }
             continue;
         }
 
-        Assignment required = output.inverted ? Assignment::FALSE : Assignment::TRUE;
+        Assignment required = output.inverted() ? Assignment::FALSE : Assignment::TRUE;
 
-        if (output.node->assignment == Assignment::UNASSIGNED) {
-            output.node->assignment = required;
-            output.node->decision_level = 0;
-            assignment_list.push_back(output.node);
-            propagation_queue.push(output.node);
+        if (output.node()->assignment == Assignment::UNASSIGNED) {
+            output.node()->assignment = required;
+            output.node()->decision_level = 0;
+            assignment_list.push_back(output.node());
+            propagation_queue.push(output.node());
 
             // Phase saving if output connected node is somehow an input
-            if (output.node->type == NodeType::INPUT)
-                output.node->saved_phase = (required == Assignment::TRUE) ? SavedPhase::TRUE : SavedPhase::FALSE;
+            if (output.node()->type == NodeType::INPUT)
+                output.node()->saved_phase = (required == Assignment::TRUE) ? SavedPhase::TRUE : SavedPhase::FALSE;
         }
-        else if (output.node->assignment != required) {
+        else if (output.node()->assignment != required) {
             conflict = true;
             return;
         }
@@ -46,8 +46,8 @@ void Solver::compute_active_inputs() {
 
     // Initialise by starting from outputs
     for (const auto& output_edge : output_nodes) {
-        Node* node = output_edge.node;
-        if (output_edge.node != nullptr) {
+        Node* node = output_edge.node();
+        if (node != nullptr) {
             node_stack.push_back(node);
             reachable_nodes.insert(node);
             // Mark node as active (directly part of aig and influences output in some way)
@@ -60,7 +60,7 @@ void Solver::compute_active_inputs() {
         Node* curr = node_stack.back();
         node_stack.pop_back();
         for (const Edge& edge : curr->input_nodes) {
-            Node* input_node = edge.node;
+            Node* input_node = edge.node();
             // Ensure not already in HashSet tracking already seen nodes
             if (input_node != nullptr && reachable_nodes.insert(input_node).second) {
                 node_stack.push_back(input_node);
@@ -279,18 +279,18 @@ Node* Solver::and_gate_importance_scoring() {
         Node* node = input_nodes[i];
         if (node->assignment == Assignment::UNASSIGNED) {
             for (int j = 0; j < node->output_nodes.size(); j++) {
-                Edge* other_node_edge = (node == node->output_nodes[j]->input_nodes[0].node)
+                Edge* other_node_edge = (node == node->output_nodes[j]->input_nodes[0].node())
                                         ? &node->output_nodes[j]->input_nodes[1] : &node->output_nodes[j]->input_nodes[0];
 
-                bool true_value = other_node_edge->node == nullptr ? other_node_edge->inverted :
-                                  (other_node_edge->node->assignment == Assignment::TRUE) ^ other_node_edge->inverted;
+                bool true_value = other_node_edge->node() == nullptr ? other_node_edge->inverted() :
+                                  (other_node_edge->node()->assignment == Assignment::TRUE) ^ other_node_edge->inverted();
 
-                if (other_node_edge->node == nullptr) {
+                if (other_node_edge->node() == nullptr) {
                     if (true_value) score += 10;
                 }
                 else {
                     if (true_value) score += 10;
-                    else if (other_node_edge->node->assignment == Assignment::UNASSIGNED) score += 2;
+                    else if (other_node_edge->node()->assignment == Assignment::UNASSIGNED) score += 2;
                 }
             }
         }
@@ -306,18 +306,18 @@ Node* Solver::and_gate_importance_scoring() {
 double Solver::vsids_and_gate_scoring(Node* node) {
     double score = 0;
     for (int j = 0; j < node->output_nodes.size(); j++) {
-        Edge* other_node_edge = (node == node->output_nodes[j]->input_nodes[0].node)
+        Edge* other_node_edge = (node == node->output_nodes[j]->input_nodes[0].node())
                         ? &node->output_nodes[j]->input_nodes[1] : &node->output_nodes[j]->input_nodes[0];
 
-        bool true_value = other_node_edge->node == nullptr ? other_node_edge->inverted :
-                        (other_node_edge->node->assignment == Assignment::TRUE) ^ other_node_edge->inverted;
+        bool true_value = other_node_edge->node() == nullptr ? other_node_edge->inverted() :
+                        (other_node_edge->node()->assignment == Assignment::TRUE) ^ other_node_edge->inverted();
 
-        if (other_node_edge->node == nullptr) {
+        if (other_node_edge->node() == nullptr) {
             if (true_value) score += 10;
         }
         else {
             if (true_value) score += 10;
-            else if (other_node_edge->node->assignment == Assignment::UNASSIGNED) score += 2;
+            else if (other_node_edge->node()->assignment == Assignment::UNASSIGNED) score += 2;
         }
     }
     return score;
@@ -359,16 +359,16 @@ void Solver::propogate_forward_helper(Node *a) {
             Edge* curr_node_edge = &output.input_nodes[0];
             Edge* other_input    = &output.input_nodes[1];
 
-            if (output.input_nodes[1].node == a) {
+            if (output.input_nodes[1].node() == a) {
                 curr_node_edge = &output.input_nodes[1];
                 other_input    = &output.input_nodes[0];
             }
 
-            bool other_is_const = (other_input->node == nullptr);
+            bool other_is_const = (other_input->node() == nullptr);
 
             // A (FALSE) AND ? = OUTPUT (FALSE)
-            if ((a->assignment == Assignment::FALSE && !curr_node_edge->inverted) ||
-                (a->assignment == Assignment::TRUE  &&  curr_node_edge->inverted)) {
+            if ((a->assignment == Assignment::FALSE && !curr_node_edge->inverted()) ||
+                (a->assignment == Assignment::TRUE  &&  curr_node_edge->inverted())) {
                 if (output.assignment == Assignment::UNASSIGNED) {
                     output.assignment = Assignment::FALSE;
                     output.decision_level = solver_decision_level;
@@ -386,14 +386,14 @@ void Solver::propogate_forward_helper(Node *a) {
             }
 
             // A (TRUE) AND B (TRUE) = OUT (TRUE)
-            else if ((a->assignment == Assignment::TRUE  && !curr_node_edge->inverted) ||
-                     (a->assignment == Assignment::FALSE &&  curr_node_edge->inverted)) {
+            else if ((a->assignment == Assignment::TRUE  && !curr_node_edge->inverted()) ||
+                     (a->assignment == Assignment::FALSE &&  curr_node_edge->inverted())) {
 
                 bool other_is_true = other_is_const
-                    ? other_input->inverted
-                    : (other_input->node->assignment == Assignment::TRUE) ^ other_input->inverted;
+                    ? other_input->inverted()
+                    : (other_input->node()->assignment == Assignment::TRUE) ^ other_input->inverted();
                 bool other_assigned = other_is_const
-                    || other_input->node->assignment != Assignment::UNASSIGNED;
+                    || other_input->node()->assignment != Assignment::UNASSIGNED;
 
                 if (other_assigned && other_is_true) {
                     if (output.assignment == Assignment::UNASSIGNED) {
@@ -409,7 +409,7 @@ void Solver::propogate_forward_helper(Node *a) {
                         conflict = true;
                         bump_activity(&output);
                         bump_activity(a);
-                        bump_activity(other_input->node);
+                        bump_activity(other_input->node());
                         return;
                     }
                 }
@@ -424,45 +424,45 @@ void Solver::propogate_backward_helper(Node *curr) {
     Edge& first_input  = curr->input_nodes[0];
     Edge& second_input = curr->input_nodes[1];
 
-    bool first_is_const  = (first_input.node  == nullptr);
-    bool second_is_const = (second_input.node == nullptr);
+    bool first_is_const  = (first_input.node()  == nullptr);
+    bool second_is_const = (second_input.node() == nullptr);
 
     // constant: nullptr + not inverted = FALSE, nullptr + inverted = TRUE
-    bool first_input_assigned  = first_is_const  || first_input.node->assignment  != Assignment::UNASSIGNED;
-    bool second_input_assigned = second_is_const || second_input.node->assignment != Assignment::UNASSIGNED;
+    bool first_input_assigned  = first_is_const  || first_input.node()->assignment  != Assignment::UNASSIGNED;
+    bool second_input_assigned = second_is_const || second_input.node()->assignment != Assignment::UNASSIGNED;
 
-    bool first_input_true  = first_is_const  ? first_input.inverted
-                           : (first_input.node->assignment  == Assignment::TRUE) ^ first_input.inverted;
-    bool second_input_true = second_is_const ? second_input.inverted
-                           : (second_input.node->assignment == Assignment::TRUE) ^ second_input.inverted;
+    bool first_input_true  = first_is_const  ? first_input.inverted()
+                           : (first_input.node()->assignment  == Assignment::TRUE) ^ first_input.inverted();
+    bool second_input_true = second_is_const ? second_input.inverted()
+                           : (second_input.node()->assignment == Assignment::TRUE) ^ second_input.inverted();
 
     // AND being TRUE
     // OUT (TRUE) = A (TRUE) AND B (TRUE)
     if (curr->assignment == Assignment::TRUE) {
-        if (!first_is_const && first_input.node->assignment == Assignment::UNASSIGNED) {
-            first_input.node->assignment = first_input.inverted ? Assignment::FALSE : Assignment::TRUE;
-            first_input.node->decision_level = solver_decision_level;
-            assignment_list.push_back(first_input.node);
-            propagation_queue.push(first_input.node);
+        if (!first_is_const && first_input.node()->assignment == Assignment::UNASSIGNED) {
+            first_input.node()->assignment = first_input.inverted() ? Assignment::FALSE : Assignment::TRUE;
+            first_input.node()->decision_level = solver_decision_level;
+            assignment_list.push_back(first_input.node());
+            propagation_queue.push(first_input.node());
 
         }
         else if (!first_input_true && first_input_assigned) {
             conflict = true;
-            bump_activity(first_input.node);
+            bump_activity(first_input.node());
             bump_activity(curr);
             return;
         }
 
-        if (!second_is_const && second_input.node->assignment == Assignment::UNASSIGNED) {
-            second_input.node->assignment = second_input.inverted ? Assignment::FALSE : Assignment::TRUE;
-            second_input.node->decision_level = solver_decision_level;
-            assignment_list.push_back(second_input.node);
-            propagation_queue.push(second_input.node);
+        if (!second_is_const && second_input.node()->assignment == Assignment::UNASSIGNED) {
+            second_input.node()->assignment = second_input.inverted() ? Assignment::FALSE : Assignment::TRUE;
+            second_input.node()->decision_level = solver_decision_level;
+            assignment_list.push_back(second_input.node());
+            propagation_queue.push(second_input.node());
 
         }
         else if (!second_input_true && second_input_assigned) {
             conflict = true;
-            bump_activity(second_input.node);
+            bump_activity(second_input.node());
             bump_activity(curr);
             return;
         }
@@ -474,29 +474,29 @@ void Solver::propogate_backward_helper(Node *curr) {
         if (first_input_assigned && second_input_assigned) {
             if (first_input_true && second_input_true) {
                 conflict = true;
-                bump_activity(first_input.node);
-                bump_activity(second_input.node);
+                bump_activity(first_input.node());
+                bump_activity(second_input.node());
                 bump_activity(curr);
                 return;
             }
         }
 
         // If other input is true, this one must be false
-        if (!first_is_const && first_input.node->assignment == Assignment::UNASSIGNED) {
+        if (!first_is_const && first_input.node()->assignment == Assignment::UNASSIGNED) {
             if (second_input_true && second_input_assigned) {
-                first_input.node->assignment = first_input.inverted ? Assignment::TRUE : Assignment::FALSE;
-                first_input.node->decision_level = solver_decision_level;
-                assignment_list.push_back(first_input.node);
-                propagation_queue.push(first_input.node);
+                first_input.node()->assignment = first_input.inverted() ? Assignment::TRUE : Assignment::FALSE;
+                first_input.node()->decision_level = solver_decision_level;
+                assignment_list.push_back(first_input.node());
+                propagation_queue.push(first_input.node());
             }
         }
 
-        if (!second_is_const && second_input.node->assignment == Assignment::UNASSIGNED) {
+        if (!second_is_const && second_input.node()->assignment == Assignment::UNASSIGNED) {
             if (first_input_true && first_input_assigned) {
-                second_input.node->assignment = second_input.inverted ? Assignment::TRUE : Assignment::FALSE;
-                second_input.node->decision_level = solver_decision_level;
-                assignment_list.push_back(second_input.node);
-                propagation_queue.push(second_input.node);
+                second_input.node()->assignment = second_input.inverted() ? Assignment::TRUE : Assignment::FALSE;
+                second_input.node()->decision_level = solver_decision_level;
+                assignment_list.push_back(second_input.node());
+                propagation_queue.push(second_input.node());
 
             }
         }

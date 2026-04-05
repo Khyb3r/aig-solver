@@ -16,21 +16,23 @@
 
 struct Node;
 struct Edge {
-    Node* node;                                    // 8 bytes
-    bool inverted;                                 // 1 byte
-};
+    // Tagged Pointer (LSB is inverted field)
+    uintptr_t edge;                                // 8 bytes
 
-struct NewEdge {
-    uintptr_t data;
-    NewEdge (Node* node, bool inverted) : data(reinterpret_cast<uintptr_t>(node) | inverted) {}
+    Edge (Node* node, bool inverted) : edge(reinterpret_cast<uintptr_t>(node) | inverted) {}
+    // Default constructor for initial Edge setup
+    Edge() : edge(0) {}
 
-    Node* node() {
-        return reinterpret_cast<Node*>(data & ~uintptr_t(1));
+    // Mask LSB to get original Node pointer
+    Node* node() const {
+        return reinterpret_cast<Node*>(edge & ~uintptr_t(1));
     }
 
-    bool inverted() {
-        return data & 1;
+    // Is inverted or not
+    bool inverted() const {
+        return edge & 1;
     }
+
 };
 
 // Force Enums to 1 byte rather than 4 byte default
@@ -46,7 +48,7 @@ struct Node {
     unsigned int variable_number;                   // 4 bytes
     int decision_level = -1;                        // 4 bytes
     float activity = 0.0;                           // 4 bytes
-    Edge input_nodes[2];                            // 32 bytes
+    Edge input_nodes[2];                            // 16 bytes
     std::vector<Node*> output_nodes;                // 24 bytes
     bool active = false;                            // 1 byte
 };
