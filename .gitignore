@@ -47,6 +47,9 @@
 # Cmake and IDE related
 .idea
 src/cmake-build-debug/
+src/cmake-build-o1/
+src/cmake-build-o2/
+src/cmake-build-release/
 src/.idea
 .DS_Store
 
