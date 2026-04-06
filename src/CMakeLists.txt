@@ -8,7 +8,6 @@ set(AIGER_LIB_DIR "/Users/khyber/Documents/aiger-lib/aiger/lib")
 
 add_executable(my_solver main.cpp
         aig.h
-        Arena.cpp
         Arena.h
         Solver/Solver.cpp
         Solver/Solver.h

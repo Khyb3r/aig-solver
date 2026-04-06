@@ -61,6 +61,7 @@ public:
     inline void always_branch_true(Node*);
     inline void always_branch_false(Node*);
     inline void phase_saving(Node*);
+    int output_propogator_scorer(Node*, Assignment);
 
     void print_stats();
     void print_preprocess_stats();
@@ -74,6 +75,7 @@ public:
     void inline bump_activity(Node*);
     void inline decay_every_N_conflicts();
     double vsids_and_gate_scoring(Node*);
+    void restart();
 };
 
 #endif //DPLLSOLVER_H

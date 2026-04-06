@@ -2,6 +2,7 @@
 #define AIG_H
 #include <vector>
 
+// Macros for working with the shared flipped and active field
 // [0,0,0,0,0,0,1,1]
 //              | | flipped bit
 //            active bit
@@ -13,11 +14,11 @@
 #define CLEAR_NODE_FLIPPED(x) ((x) & ~(1 << 0))
 
 
-
 struct Node;
+
 struct Edge {
     // Tagged Pointer (LSB is inverted field)
-    uintptr_t edge;                                // 8 bytes
+    uintptr_t edge;                                   // 8 bytes
 
     Edge (Node* node, bool inverted) : edge(reinterpret_cast<uintptr_t>(node) | inverted) {}
     // Default constructor for initial Edge setup
@@ -32,7 +33,6 @@ struct Edge {
     bool inverted() const {
         return edge & 1;
     }
-
 };
 
 // Force Enums to 1 byte rather than 4 byte default
@@ -44,11 +44,12 @@ struct Node {
     NodeType type;                                  // 1 byte
     Assignment assignment = Assignment::UNASSIGNED; // 1 byte
     SavedPhase saved_phase = SavedPhase::NONE;      // 1 byte
-    uint8_t flipped_and_active_field = 0;           // 1 byte           // 4
+    uint8_t flipped_and_active_field = 0;           // 1 byte
     unsigned int variable_number;                   // 4 bytes
     int decision_level = -1;                        // 4 bytes
-    float activity = 0.0;                           // 4 bytes          // 12
-    Edge input_nodes[2];                            // 16 bytes         // 16
-    std::vector<Node*> output_nodes;                // 24 bytes         // 24
+    float activity = 0.0;                           // 4 bytes
+    Edge input_nodes[2];                            // 16 bytes
+    std::vector<Node*> output_nodes;                // 24 bytes
 };
+
 #endif //AIG_H

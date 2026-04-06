@@ -59,4 +59,5 @@ public:
         this->prev_offset = 0;
     }
 };
+
 #endif //ARENA_H

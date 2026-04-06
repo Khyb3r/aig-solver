@@ -2,6 +2,17 @@
 #include <iostream>
 #include <unordered_set>
 
+// --- Only 1 must be active ---
+//#define CHOOSE_FIRST_UNASSIGNED
+#define CHOOSE_AND_GATE_IMPORTANCE
+//#define CHOOSE_LARGEST_FANOUT
+//#define CHOOSE_VSIDS
+
+// -- Only 1 must be active ---
+#define BRANCH_STRONGER_PROPAGATION
+//#define BRANCH_TRUE_DEFAULT
+//#define BRANCH_FALSE_DEFAULT
+
 void Solver::preprocess() {
     for (int i = 0; i < output_nodes.size(); i++) {
         Edge& output = output_nodes[i];
@@ -200,11 +211,21 @@ Node* Solver::decide_node() {
     solver_decisions++;
 
     // Change decision heuristic here
+#ifdef CHOOSE_FIRST_UNASSIGNED
     Node* chosen_node = choose_first_unassigned();
-    //Node* chosen_node = and_gate_importance_scoring();
-    //Node* chosen_node = choose_largest_fanout();
-    //Node* chosen_node = vsids_choose_node();
+#endif
 
+#ifdef CHOOSE_AND_GATE_IMPORTANCE
+    Node* chosen_node = and_gate_importance_scoring();
+#endif
+
+#ifdef CHOOSE_LARGEST_FANOUT
+    Node* chosen_node = choose_largest_fanout();
+#endif
+
+#ifdef CHOOSE_VSIDS
+    Node* chosen_node = vsids_choose_node();
+#endif
 
     if (chosen_node != nullptr) {
         //always_branch_true(chosen_node);
@@ -233,11 +254,31 @@ void Solver::phase_saving(Node* chosen_node) {
             chosen_node->decision_level = solver_decision_level;
         }
     }
-    // Always branch True currently
+
     else {
+    #ifdef BRANCH_STRONGER_PROPAGATION
+        // Choose based on which branch has stronger propagation implications
+        bool true_prop_score = output_propogator_scorer(chosen_node, Assignment::TRUE);
+        bool false_prop_score = output_propogator_scorer(chosen_node, Assignment::FALSE);
+
+        chosen_node->assignment = (true_prop_score >= false_prop_score) ? Assignment::TRUE : Assignment::FALSE;
+        chosen_node->decision_level = solver_decision_level;
+        chosen_node->saved_phase = (chosen_node->assignment == Assignment::TRUE) ? SavedPhase::TRUE : SavedPhase::FALSE;
+    #endif
+
+    #ifdef BRANCH_TRUE_DEFAULT
+        // Choose true every time by default
         chosen_node->assignment = Assignment::TRUE;
         chosen_node->decision_level = solver_decision_level;
         chosen_node->saved_phase = SavedPhase::TRUE;
+    #endif
+
+    #ifdef BRANCH_FALSE_DEFAULT
+        // Choose false every time by default
+        chosen_node->assignment = Assignment::FALSE;
+        chosen_node->decision_level = solver_decision_level;
+        chosen_node->saved_phase = SavedPhase::FALSE;
+    #endif
     }
 }
 
@@ -629,4 +670,46 @@ inline void Solver::total_valid_nodes_count() {
     for (int i = 0; i < nodes_list_size; i++) {
         if (nodes_list[i] != nullptr) actual_total_nodes++;
     }
+}
+
+int Solver::output_propogator_scorer(Node* node, Assignment assignment) {
+    int score = 0;
+    for (int i = 0; i < node->output_nodes.size(); i++) {
+        Node* output_node = node->output_nodes[i];
+        if (output_node->type != NodeType::AND) continue;
+        Edge* curr_edge = (node == output_node->input_nodes[0].node()) ? &output_node->input_nodes[1] : &output_node->input_nodes[0];
+        Edge* other_edge = (node == output_node->input_nodes[0].node()) ? &output_node->input_nodes[1] : &output_node->input_nodes[0];
+
+        bool other_node_assigned = other_edge->node() == nullptr || other_edge->node()->assignment != Assignment::UNASSIGNED;
+        bool other_node_true = other_edge->node() == nullptr ? other_edge->inverted() : (other_edge->node()->assignment == Assignment::TRUE) ^ other_edge->inverted();
+
+        bool curr_node_actual_true = (assignment == Assignment::TRUE) ^ curr_edge->inverted();
+
+        if (curr_node_actual_true) {
+            if (other_node_assigned && other_node_true) score += 10;
+            else if (!other_node_assigned) score += 5;
+            else score += 1;
+        }
+        else {
+            if (output_node->assignment == Assignment::FALSE) score += 7;
+            else if (output_node->assignment == Assignment::UNASSIGNED) score += 4;
+            else score -= 5;
+        }
+    }
+    return score;
+}
+
+void Solver::restart() {
+    while (!assignment_list.empty()) {
+        Node* node = assignment_list.back();
+        if (node->decision_level == 0) break;
+        node->assignment = Assignment::UNASSIGNED;
+        node->decision_level = -1;
+        node->flipped_and_active_field = CLEAR_NODE_FLIPPED(node->flipped_and_active_field);
+        assignment_list.pop_back();
+    }
+    while (!propagation_queue.empty()) propagation_queue.pop();
+    decision_level_boundary_indexes.clear();
+    solver_decision_level = 1;
+    conflict = false;
 }
