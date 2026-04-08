@@ -48,6 +48,7 @@ struct Node {
     unsigned int variable_number;                   // 4 bytes
     int decision_level = -1;                        // 4 bytes
     float activity = 0.0;                           // 4 bytes
+    int depth_from_out = -1;                        // 4 bytes
     Edge input_nodes[2];                            // 16 bytes
     std::vector<Node*> output_nodes;                // 24 bytes
 };

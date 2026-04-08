@@ -6,7 +6,7 @@ def relative_path(*parts):
 
 #benchmark_file = relative_path("../Benchmarks/Sequential-Unrolled/tip-aig-20061215/texas.parsesys^1.E.aig")
 #benchmark_file = relative_path("../Benchmarks/Structural-SAT-All-UNSAT/tip-k-ind-aigs-o1234g/O4/texas.parsesys^2.E.aig")
-benchmark_file = relative_path("../Benchmarks/Bit-Blasted-SMTs/smtqfbv-aigs/mult_ub_8x8_1.sf.aig")
+benchmark_file = relative_path("../Benchmarks/Bit-Blasted-SMTs/smtqfbv-aigs/nnrpd_nnrpd_vc20235.aig")
 program        = relative_path("../src/cmake-build-release/./my_solver")
 logs_path = relative_path("../logs/Bit-Blasted-Runs/run_01/raw")
 abc_path = os.path.realpath(relative_path("../../berkeley-abc/abc/abc"))
@@ -20,12 +20,14 @@ output_dir = relative_path("../Benchmarks/Unrolled-Outputs")
 unrolled_aig = os.path.join(output_dir, os.path.basename(benchmark_file))
 os.makedirs(output_dir, exist_ok=True)
 abc_command_unrolling = f""" r {benchmark_file}; strash; frames -F 7 -i ; orpos;  write_aiger -s {unrolled_aig}"""
+
+"""
 print(f"Running: {os.path.basename(benchmark_file)}")
 try:
     subprocess.run([abc_path, "-c", abc_command_unrolling], check=True, cwd=os.path.dirname(abc_path))
 except subprocess.CalledProcessError as e:
     print(f"ABC Unrolling error: {e}")
-
+"""
 
 # My Solver
 try:
@@ -33,6 +35,7 @@ try:
 except subprocess.CalledProcessError as e:
     print(f"Solver error: {e}")
 
+"""
 # MiniSAT
 try:
     abc_command = f'r {benchmark_file}; sat'
@@ -63,3 +66,4 @@ try:
 
 except subprocess.CalledProcessError as e:
     print(f"CaDiCaL error: {e}")
+"""

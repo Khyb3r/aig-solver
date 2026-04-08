@@ -8,10 +8,16 @@
 //#define CHOOSE_LARGEST_FANOUT
 //#define CHOOSE_VSIDS
 
+//#define ALWAYS_BRANCH_TRUE
+//#define ALWAYS_BRANCH_FALSE
+#define PHASE_SAVING
+
 // -- Only 1 must be active ---
-#define BRANCH_STRONGER_PROPAGATION
-//#define BRANCH_TRUE_DEFAULT
+//#define BRANCH_STRONGER_PROPAGATION
+#define BRANCH_TRUE_DEFAULT
 //#define BRANCH_FALSE_DEFAULT
+
+#define PRIORITISE_CLOSER_OUTPUTS
 
 void Solver::preprocess() {
     for (int i = 0; i < output_nodes.size(); i++) {
@@ -168,6 +174,9 @@ void Solver::undo_probing(size_t before_size) {
 
 bool Solver::run() {
     compute_active_inputs();
+#ifdef PRIORITISE_CLOSER_OUTPUTS
+    calculate_nodes_depth_from_output();
+#endif
     preprocess();
     if (conflict) {
         std::cout << "UNSAT" << '\n';
@@ -228,9 +237,18 @@ Node* Solver::decide_node() {
 #endif
 
     if (chosen_node != nullptr) {
-        //always_branch_true(chosen_node);
-        //always_branch_false(chosen_node);
+    #ifdef ALWAYS_BRANCH_TRUE
+        always_branch_true(chosen_node);
+    #endif
+
+    #ifdef ALWAYS_BRANCH_FALSE
+        always_branch_false(chosen_node);
+    #endif
+
+    #ifdef PHASE_SAVING
         phase_saving(chosen_node);
+    #endif
+
     }
     return chosen_node;
 }
@@ -335,6 +353,12 @@ Node* Solver::and_gate_importance_scoring() {
                 }
             }
         }
+    #ifdef PRIORITISE_CLOSER_OUTPUTS
+        // Scale according to depth
+        double depth_score_scaled = (node->depth_from_out >= 0) ? (10.0 / (node->depth_from_out + 1)) : 0;
+        score += static_cast<int>(depth_score_scaled);
+    #endif
+
         if (score > best_score) {
             best_score = score;
             best_node = node;
@@ -699,17 +723,25 @@ int Solver::output_propogator_scorer(Node* node, Assignment assignment) {
     return score;
 }
 
-void Solver::restart() {
-    while (!assignment_list.empty()) {
-        Node* node = assignment_list.back();
-        if (node->decision_level == 0) break;
-        node->assignment = Assignment::UNASSIGNED;
-        node->decision_level = -1;
-        node->flipped_and_active_field = CLEAR_NODE_FLIPPED(node->flipped_and_active_field);
-        assignment_list.pop_back();
+void Solver::calculate_nodes_depth_from_output() {
+    std::queue<Node*> queue;
+    for (const auto& output_edge : output_nodes) {
+        Node* node = output_edge.node();
+        if (node != nullptr && node->depth_from_out == -1) {
+            node->depth_from_out = 0;
+            queue.push(node);
+        }
     }
-    while (!propagation_queue.empty()) propagation_queue.pop();
-    decision_level_boundary_indexes.clear();
-    solver_decision_level = 1;
-    conflict = false;
+
+    while (!queue.empty()) {
+        Node* node = queue.front();
+        queue.pop();
+        for (const auto& edge : node->input_nodes) {
+            Node* input = edge.node();
+            if (input != nullptr && input->depth_from_out == -1) {
+                input->depth_from_out = node->depth_from_out + 1;
+                queue.push(input);
+            }
+        }
+    }
 }

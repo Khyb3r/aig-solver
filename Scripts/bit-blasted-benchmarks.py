@@ -71,40 +71,43 @@ def parse_preprocessing_output(output):
 
 
 
-benchmarks_path = relative_path("../Benchmarks/Structural-SAT-All-UNSAT/tip-k-ind-aigs-o1234g/O1")
-#benchmarks_path = relative_path("../Benchmarks/Bit-Blasted-SMTs/smtqfbv-aigs/")
-my_solver_path = relative_path("../src/cmake-build-debug/./my_solver")
+#benchmarks_path = relative_path("../Benchmarks/Structural-SAT-All-UNSAT/tip-k-ind-aigs-o1234g/O1")
+benchmarks_path = relative_path("../Benchmarks/Bit-Blasted-SMTs/smtqfbv-aigs/")
+my_solver_path = relative_path("../src/cmake-build-release/./my_solver")
 abc_path = os.path.realpath(relative_path("../../berkeley-abc/abc/abc"))
 cadical_path = os.path.realpath(relative_path("../../cadical-lib/cadical/build"))
 
-logs_base_path = relative_path("../logs/Structural-All-UNSAT-Runs/run_03")
+logs_base_path = relative_path("../logs/Variable-Choice-Heuristic-Comparisons/And-Gate-And-Depth")
 logs_json_path = os.path.join(logs_base_path, "run.json")
 logs_raw_path = os.path.join(logs_base_path, "raw")
 
 os.makedirs(logs_raw_path, exist_ok=True)
 
 run_data = {
-    "run_id": "run_03-different-compiler-optimisations-comparison",
+    "run_id": "and_gate_and_depth",
     "benchmarks": []
 }
 
+handcrafted_set_for_choice_comparison = ["mult_ub_4x4_1.sf.aig", "mult_ub_8x8_1.sf.aig" ,"countbits016.aig", "countbitssrl008.aig", "countbitssrl016.aig", "mulhs-8.aig", ]
+
+
 with os.scandir(benchmarks_path) as entries:
     for file in entries:
-        if file.is_file():
+        if file.is_file() and file.name in handcrafted_set_for_choice_comparison:
             print(f"\nRunning: {file.name}")
             benchmark_entry = {
                 "benchmark_file": file.name,
-                "preprocessing": {},
+                "and_gate_and_depth": {},
             }
             try:
                 try:
                     solver_process = subprocess.run([my_solver_path, file.path], capture_output=True, text=True, check=True, timeout=10)
                     solver_output = solver_process.stdout
                     parsed_solver = parse_my_solver_output(solver_output)
-                    benchmark_entry["preprocessing"] = parsed_solver
+                    benchmark_entry["and_gate_and_depth"] = parsed_solver
                 except subprocess.TimeoutExpired:
                     solver_output = ""
-                    benchmark_entry["preprocessing"] = {
+                    benchmark_entry["and_gate_and_depth"] = {
                         "benchmark": None,
                         "result": None,
                         "time": None

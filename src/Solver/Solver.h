@@ -56,6 +56,7 @@ public:
     Node* choose_first_unassigned();
     Node* choose_largest_fanout();
     Node* and_gate_importance_scoring();
+    void calculate_nodes_depth_from_output();
 
     // Branching heuristic
     inline void always_branch_true(Node*);
@@ -75,7 +76,6 @@ public:
     void inline bump_activity(Node*);
     void inline decay_every_N_conflicts();
     double vsids_and_gate_scoring(Node*);
-    void restart();
 };
 
 #endif //DPLLSOLVER_H
