@@ -1,13 +1,33 @@
 import os
 import subprocess
-
+import re
+def parse_cadical_output(output):
+    data = {
+        "result": None,
+        "time": None
+    }
+    for line in output.splitlines():
+        line = line.strip()
+        if (line.startswith("s SATISFIABLE")):
+            data["result"] = "SAT"
+        elif (line.startswith("s UNSATISFIABLE")):
+            data["result"] = "UNSAT"
+        elif(line.startswith("c total process")):
+            match = re.search(r":\s*([0-9]*\.?[0-9]+)", line)
+            if match:
+                data["time"] = float(match.group(1))
+    return data
 def relative_path(*parts):
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), *parts)
 
-#benchmark_file = relative_path("../Benchmarks/Sequential-Unrolled/tip-aig-20061215/texas.parsesys^1.E.aig")
-#benchmark_file = relative_path("../Benchmarks/Structural-SAT-All-UNSAT/tip-k-ind-aigs-o1234g/O4/texas.parsesys^2.E.aig")
-benchmark_file = relative_path("../Benchmarks/Bit-Blasted-SMTs/smtqfbv-aigs/nnrpd_nnrpd_vc20235.aig")
+# ONLY EDIT AROUND THIS AREA --------------------------------------------------------------------------------------------
+# EDIT THIS TO CORRECT PATH
 program        = relative_path("../src/cmake-build-release/./my_solver")
+# LOOK THROUGH BENCHMARKS IF YOU WANT TO TEST CHANGE THIS PATH TO THAT BENCHMARK (DO NOT PICK FROM SEQUENTIAL CIRCUITS)
+benchmark_file = relative_path("../Benchmarks/Bit-Blasted-SMTs/smtqfbv-aigs/mult_ub_8x8_1.sf.aig")
+# ------------------------------------------------------------------------------------------------------------------------
+
+
 logs_path = relative_path("../logs/Bit-Blasted-Runs/run_01/raw")
 abc_path = os.path.realpath(relative_path("../../berkeley-abc/abc/abc"))
 
@@ -35,18 +55,19 @@ try:
 except subprocess.CalledProcessError as e:
     print(f"Solver error: {e}")
 
-"""
+
 # MiniSAT
+"""
 try:
-    abc_command = f'r {benchmark_file}; sat'
-    subprocess.run([abc_path, "-c", abc_command], check=True, cwd=os.path.dirname(abc_path))
+    abc_command = f'r {unrolled_aig}; sat'
+    subprocess.run([abc_path, "-c", abc_command], check=True, cwd=os.path.dirname(abc_path), timeout=15)
 except subprocess.CalledProcessError as e:
     print(f"ABC error: {e}")
 
 
 # CaDiCaL
 try:
-    abc_command_cnf = f'r {benchmark_file}; write_cnf {cnf_file_for_cadical}'
+    abc_command_cnf = f'r {unrolled_aig}; write_cnf {cnf_file_for_cadical}'
     subprocess.run([abc_path, "-c", abc_command_cnf], check=True, cwd=os.path.dirname(abc_path))
 except subprocess.CalledProcessError as e:
     print(f"ABC CNF generation error: {e}")
@@ -56,13 +77,16 @@ try:
     cadical_binary = os.path.join(cadical_path, "cadical")
 
     result = subprocess.run(
-        [cadical_binary ,cnf_file_for_cadical],
+        [cadical_binary, cnf_file_for_cadical],
         capture_output=True,
         text=True
     )
-
     print("CaDiCaL output:")
     print(result.stdout)
+
+    parsed = parse_cadical_output(result.stdout)
+    print("\nParsed result:")
+    print(parsed)
 
 except subprocess.CalledProcessError as e:
     print(f"CaDiCaL error: {e}")

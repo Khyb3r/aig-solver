@@ -13,11 +13,13 @@
 #define PHASE_SAVING
 
 // -- Only 1 must be active ---
-//#define BRANCH_STRONGER_PROPAGATION
-#define BRANCH_TRUE_DEFAULT
+#define BRANCH_STRONGER_PROPAGATION
+//#define BRANCH_TRUE_DEFAULT
 //#define BRANCH_FALSE_DEFAULT
 
-#define PRIORITISE_CLOSER_OUTPUTS
+#ifdef CHOOSE_AND_GATE_IMPORTANCE
+//#define PRIORITISE_CLOSER_OUTPUTS
+#endif
 
 void Solver::preprocess() {
     for (int i = 0; i < output_nodes.size(); i++) {

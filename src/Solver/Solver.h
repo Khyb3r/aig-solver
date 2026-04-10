@@ -23,9 +23,10 @@ public:
 
 
     // === METRICS FOR ANALYSIS ===
-    int solver_conflicts = 0;
-    int solver_propagations = 0;
-    int solver_decisions = 0;
+    // Unsigned to prevent overflow for very large benchmark instances
+    unsigned int solver_conflicts = 0;
+    unsigned int solver_propagations = 0;
+    unsigned int solver_decisions = 0;
 
     // Metrics for preprocess specific analysis
     int solver_total_inputs = 0;
