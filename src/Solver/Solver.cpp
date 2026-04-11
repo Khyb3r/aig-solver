@@ -2,25 +2,28 @@
 #include <iostream>
 #include <unordered_set>
 
-// --- Only 1 must be active ---
+// --- Node Choice Heuristics : Only 1 must be active ---
 //#define CHOOSE_FIRST_UNASSIGNED
 #define CHOOSE_AND_GATE_IMPORTANCE
 //#define CHOOSE_LARGEST_FANOUT
 //#define CHOOSE_VSIDS
 
+// --- Node Branching Heuristics : Only 1 must be active ---
 //#define ALWAYS_BRANCH_TRUE
 //#define ALWAYS_BRANCH_FALSE
 #define PHASE_SAVING
 
-// -- Only 1 must be active ---
+// -- Phase Saving Heuristics for no saved phase case : Only 1 must be active ---
 #define BRANCH_STRONGER_PROPAGATION
 //#define BRANCH_TRUE_DEFAULT
 //#define BRANCH_FALSE_DEFAULT
 
+// --- Only set if AND_GATE_IMPORTANCE is set but toggle on off with/without it ---
 #ifdef CHOOSE_AND_GATE_IMPORTANCE
 //#define PRIORITISE_CLOSER_OUTPUTS
 #endif
 
+// Assign the outputs with their necessary values and also propagate these consequences backwards through the AIG
 void Solver::preprocess() {
     for (int i = 0; i < output_nodes.size(); i++) {
         Edge& output = output_nodes[i];
@@ -32,6 +35,7 @@ void Solver::preprocess() {
             continue;
         }
 
+        // What the output should be assigned to considering the inversion on the edge
         Assignment required = output.inverted() ? Assignment::FALSE : Assignment::TRUE;
 
         if (output.node()->assignment == Assignment::UNASSIGNED) {
@@ -44,20 +48,21 @@ void Solver::preprocess() {
             if (output.node()->type == NodeType::INPUT)
                 output.node()->saved_phase = (required == Assignment::TRUE) ? SavedPhase::TRUE : SavedPhase::FALSE;
         }
+        // If somehow the output node is already assigned to something else, meaning the AIG fundamentally is already UNSAT
         else if (output.node()->assignment != required) {
             conflict = true;
             return;
         }
     }
+    // Propagate throughout the AIG -> everything propagated here gets set to decision level 0 as its part of preprocessing
     while (!propagation_queue.empty() && !conflict) {
-        propogate(propagation_queue.front());
+        propagate(propagation_queue.front());
         propagation_queue.pop();
     }
 }
 
+// Go backwards up the graph from the output/s and remove/mark nodes that aren't directly relevant to the output
 void Solver::compute_active_inputs() {
-    // Go backwards up the graph from the output/s and remove/mark nodes that aren't directly relevant to the output
-
     // Records which node to process next (DFS traversal)
     std::vector<Node*> node_stack;
     // Ensures same node isn't processed again
@@ -99,7 +104,8 @@ void Solver::compute_active_inputs() {
     input_nodes = new_marked_input_nodes; */
 }
 
-
+// Attempts to attempt both True and False for each input node and then choose one or the other based on whether
+// they cause a conflict or not. If neither do then you cannot force any assignment and it will be left unassigned
 void Solver::failed_literal_probing() {
     for (int i = 0; i < input_nodes.size(); i++) {
         Node* node = input_nodes[i];
@@ -111,58 +117,65 @@ void Solver::failed_literal_probing() {
         node->decision_level = 0;
         assignment_list.push_back(node);
         propagation_queue.push(node);
+        // Propagate implications of True throughout
         while (!propagation_queue.empty() && !conflict) {
-            propogate(propagation_queue.front());
+            propagate(propagation_queue.front());
             propagation_queue.pop();
         }
+        // Record whether a conflict occurs or not when True is probed here +  its propagations finish
         bool true_fail = conflict;
         // Undo probing
         undo_probing(saved_size);
 
-        // Prove FALSE
+        // Probe FALSE
         node->assignment = Assignment::FALSE;
         node->decision_level = 0;
         assignment_list.push_back(node);
         propagation_queue.push(node);
+        // Propagate implications of False throughout
         while (!propagation_queue.empty() && !conflict) {
-            propogate(propagation_queue.front());
+            propagate(propagation_queue.front());
             propagation_queue.pop();
         }
+        // Record whether a conflict occurs or not when False is probed here +  its propagations finish
         bool false_fail = conflict;
         // Undo probing
         undo_probing(saved_size);
 
-        // UNSAT
+        // UNSAT (Both of the probings caused a conflict -> Can't be possible unless unsatisfiable)
         if (true_fail && false_fail) {
             conflict = true;
             return;
         }
+        // True probe caused a conflict so node has to be assigned False
         else if (true_fail) {
-            // Has to be false
             node->assignment = Assignment::FALSE;
             node->decision_level = 0;
             assignment_list.push_back(node);
             propagation_queue.push(node);
             while (!propagation_queue.empty() && !conflict) {
-                propogate(propagation_queue.front());
+                propagate(propagation_queue.front());
                 propagation_queue.pop();
             }
             if (conflict) return;
         }
+        // False probe caused a conflict so node has to be assigned True
         else if (false_fail) {
             node->assignment = Assignment::TRUE;
             node->decision_level = 0;
             assignment_list.push_back(node);
             propagation_queue.push(node);
             while (!propagation_queue.empty() && !conflict) {
-                propogate(propagation_queue.front());
+                propagate(propagation_queue.front());
                 propagation_queue.pop();
             }
             if (conflict) return;
         }
+        // Do nothing if neither probe caused a conflict
     }
 }
 
+// Clears the assignment list, propagation queue, resets each Node to default and resets conflict flag
 void Solver::undo_probing(size_t before_size) {
     while (assignment_list.size() > before_size) {
         Node* n = assignment_list.back();
@@ -174,6 +187,8 @@ void Solver::undo_probing(size_t before_size) {
     conflict = false;
 }
 
+// Entry point of the solver that is called to run the solver
+// Loops endlessly until it finds the AIG to be SATISFIABLE or UNSATISFIABLE
 bool Solver::run() {
     compute_active_inputs();
 #ifdef PRIORITISE_CLOSER_OUTPUTS
@@ -181,33 +196,34 @@ bool Solver::run() {
 #endif
     preprocess();
     if (conflict) {
-        std::cout << "UNSAT" << '\n';
+        std::cout << "UNSATISFIABLE" << '\n';
         return false;
     }
     failed_literal_probing();
     if (conflict) {
-        std::cout << "UNSAT" << '\n';
+        std::cout << "UNSATISFIABLE" << '\n';
         return false;
     }
     solver_decision_level = 1;
     while (true) {
         // First drain any pending propagation (from a flip or fresh start)
         while (!propagation_queue.empty() && !conflict) {
-            propogate(propagation_queue.front());
+            propagate(propagation_queue.front());
             propagation_queue.pop();
         }
 
         if (conflict) {
             if (!conflict_handler()) {
-                std::cout << "UNSAT\n";
+                std::cout << "UNSATISFIABLE\n";
                 return false;
             }
-            continue; // go back and propagate the flipped decision
+            // Return and go propagate the other/flipped decision
+            continue;
         }
 
         Node* unassigned_node = decide_node();
         if (unassigned_node == nullptr) {
-            std::cout << "SAT\n";
+            std::cout << "SATISFIABLE\n";
             return true;
         }
 
@@ -218,10 +234,13 @@ bool Solver::run() {
     }
 }
 
+// First chooses which node to decide next based on a range of different strategies
+// Then uses a range of different strategies to branch on that node (whether it assigns it True or False)
+// Heuristics are changed by commenting/uncommenting macro definitions at the top of the file
 Node* Solver::decide_node() {
     solver_decisions++;
 
-    // Change decision heuristic here
+    // Decision part (which node to choose)
 #ifdef CHOOSE_FIRST_UNASSIGNED
     Node* chosen_node = choose_first_unassigned();
 #endif
@@ -238,6 +257,7 @@ Node* Solver::decide_node() {
     Node* chosen_node = vsids_choose_node();
 #endif
 
+    // Branching part (what to assign the chosen node)
     if (chosen_node != nullptr) {
     #ifdef ALWAYS_BRANCH_TRUE
         always_branch_true(chosen_node);
@@ -263,6 +283,11 @@ inline void Solver::always_branch_false(Node* chosen_node) {
     chosen_node->assignment = Assignment::FALSE;
     chosen_node->decision_level = solver_decision_level;
 }
+
+// Uses a phased save to choose an assignment the node
+// If there is no saved phase for it then either use:
+// a propagation based scoring approach to find the better fit of True or False to branch on
+// branch True always as a default or branch False always as a default
 void Solver::phase_saving(Node* chosen_node) {
     if (chosen_node->saved_phase != SavedPhase::NONE) {
         if (chosen_node->saved_phase == SavedPhase::TRUE) {
@@ -278,8 +303,8 @@ void Solver::phase_saving(Node* chosen_node) {
     else {
     #ifdef BRANCH_STRONGER_PROPAGATION
         // Choose based on which branch has stronger propagation implications
-        bool true_prop_score = output_propogator_scorer(chosen_node, Assignment::TRUE);
-        bool false_prop_score = output_propogator_scorer(chosen_node, Assignment::FALSE);
+        bool true_prop_score = output_propagator_scorer(chosen_node, Assignment::TRUE);
+        bool false_prop_score = output_propagator_scorer(chosen_node, Assignment::FALSE);
 
         chosen_node->assignment = (true_prop_score >= false_prop_score) ? Assignment::TRUE : Assignment::FALSE;
         chosen_node->decision_level = solver_decision_level;
@@ -331,6 +356,9 @@ Node* Solver::choose_largest_fanout() {
     return chosen_node;
 }
 
+// Gives nodes a scoring based on how its outputs would be resolved
+// Chooses the node with the highest node score
+// Also if the macro is set, consider the depth of the node (how far it is from the outputs) as part of the scoring
 Node* Solver::and_gate_importance_scoring() {
     // Go through all input nodes and give them a scoring
     int best_score = 0;
@@ -339,24 +367,31 @@ Node* Solver::and_gate_importance_scoring() {
         int score = 0;
         Node* node = input_nodes[i];
         if (node->assignment == Assignment::UNASSIGNED) {
+            // Loop through each output of the node and accumulate the scpre
             for (int j = 0; j < node->output_nodes.size(); j++) {
+                // Get the other node on the other side of the AND gate
                 Edge* other_node_edge = (node == node->output_nodes[j]->input_nodes[0].node())
                                         ? &node->output_nodes[j]->input_nodes[1] : &node->output_nodes[j]->input_nodes[0];
 
+                // Find the actual value of the other node by considering it's inversion and whether it's a constant
                 bool true_value = other_node_edge->node() == nullptr ? other_node_edge->inverted() :
                                   (other_node_edge->node()->assignment == Assignment::TRUE) ^ other_node_edge->inverted();
 
+                // If the other edge is a constant and true (high score as it will be immediately resolved
+                // by choosing and assigning the current node)
                 if (other_node_edge->node() == nullptr) {
                     if (true_value) score += 10;
                 }
                 else {
+                    // Same principle above if the other node is true
                     if (true_value) score += 10;
+                    // Lower score if it is unassigned (dependent on propagation so largely unknown)
                     else if (other_node_edge->node()->assignment == Assignment::UNASSIGNED) score += 2;
                 }
             }
         }
     #ifdef PRIORITISE_CLOSER_OUTPUTS
-        // Scale according to depth
+        // Scale according to depth (gives initiative only to nodes with depth <= 10 others get close to 0 essentially)
         double depth_score_scaled = (node->depth_from_out >= 0) ? (10.0 / (node->depth_from_out + 1)) : 0;
         score += static_cast<int>(depth_score_scaled);
     #endif
@@ -369,7 +404,7 @@ Node* Solver::and_gate_importance_scoring() {
     return best_node;
 }
 
-
+// Effectively the same as and_gate_importance_scoring just completely disregards node depth as a factor
 double Solver::vsids_and_gate_scoring(Node* node) {
     double score = 0;
     for (int j = 0; j < node->output_nodes.size(); j++) {
@@ -390,12 +425,15 @@ double Solver::vsids_and_gate_scoring(Node* node) {
     return score;
 }
 
+// Chooses node with highest combined VSIDS-like activity score + a weighted
+// AND gate structural score same as the one in and_gate_importance_scoring
 Node* Solver::vsids_choose_node() {
     Node* best_node = nullptr;
     double best_score = -1.0;
     for (int i = 0; i < input_nodes.size(); i++) {
         Node* node = input_nodes[i];
         if (node->assignment != Assignment::UNASSIGNED) continue;
+        // Give a 30% weighted score to the AND gate so the activity score dominates more
         double score = node->activity + vsids_and_gate_scoring(node) * 0.3;
         if (score > best_score) {
             best_score = score;
@@ -405,19 +443,23 @@ Node* Solver::vsids_choose_node() {
     return best_node;
 }
 
-void Solver::propogate(Node *a) {
+// Propagate the node throughout the AIG by propagating both forward through the AIG towards outputs
+// and backwards through the AIG towards the inputs
+void Solver::propagate(Node *a) {
     solver_propagations++;
     if (a->type == NodeType::AND) {
         // backprop and forward prop
-        propogate_backward_helper(a);
-        propogate_forward_helper(a);
+        propagate_backward_helper(a);
+        propagate_forward_helper(a);
         return;
     }
-    // forward prop only
-    propogate_forward_helper(a);
+    // if node is not AND there is no backprop as it is an INPUT so forward prop only
+    propagate_forward_helper(a);
 }
 
-void Solver::propogate_forward_helper(Node *a) {
+// Propagates the nodes implications down towards its outputs
+// Handles all the cases of how the node should be pushed throughout and catches conflicts if they occur
+void Solver::propagate_forward_helper(Node *a) {
     for (int i = 0; i < a->output_nodes.size(); i++) {
         // Current node output
         Node& output = *a->output_nodes[i];
@@ -446,8 +488,11 @@ void Solver::propogate_forward_helper(Node *a) {
                 else if (output.assignment == Assignment::TRUE) {
                     // conflict
                     conflict = true;
+                #ifdef CHOOSE_VSIDS
+                    // Increases activity of nodes involved in conflict, only set for the VSIDS-like heuristic
                     bump_activity(&output);
                     bump_activity(a);
+                #endif
                     return;
                 }
             }
@@ -474,9 +519,11 @@ void Solver::propogate_forward_helper(Node *a) {
                     else if (output.assignment == Assignment::FALSE) {
                         // conflict
                         conflict = true;
+                    #ifdef CHOOSE_VSIDS
                         bump_activity(&output);
                         bump_activity(a);
                         bump_activity(other_input->node());
+                    #endif
                         return;
                     }
                 }
@@ -485,7 +532,9 @@ void Solver::propogate_forward_helper(Node *a) {
     }
 }
 
-void Solver::propogate_backward_helper(Node *curr) {
+// Propagates the nodes implications up to its inputs
+// Handles all the cases of how the node should be pushed throughout and catches conflicts if they occur
+void Solver::propagate_backward_helper(Node *curr) {
     if (curr->type != NodeType::AND) return;
 
     Edge& first_input  = curr->input_nodes[0];
@@ -494,7 +543,6 @@ void Solver::propogate_backward_helper(Node *curr) {
     bool first_is_const  = (first_input.node()  == nullptr);
     bool second_is_const = (second_input.node() == nullptr);
 
-    // constant: nullptr + not inverted = FALSE, nullptr + inverted = TRUE
     bool first_input_assigned  = first_is_const  || first_input.node()->assignment  != Assignment::UNASSIGNED;
     bool second_input_assigned = second_is_const || second_input.node()->assignment != Assignment::UNASSIGNED;
 
@@ -515,8 +563,10 @@ void Solver::propogate_backward_helper(Node *curr) {
         }
         else if (!first_input_true && first_input_assigned) {
             conflict = true;
+        #ifdef CHOOSE_VSIDS
             bump_activity(first_input.node());
             bump_activity(curr);
+        #endif
             return;
         }
 
@@ -529,8 +579,10 @@ void Solver::propogate_backward_helper(Node *curr) {
         }
         else if (!second_input_true && second_input_assigned) {
             conflict = true;
+        #ifdef CHOOSE_VSIDS
             bump_activity(second_input.node());
             bump_activity(curr);
+        #endif
             return;
         }
     }
@@ -541,9 +593,11 @@ void Solver::propogate_backward_helper(Node *curr) {
         if (first_input_assigned && second_input_assigned) {
             if (first_input_true && second_input_true) {
                 conflict = true;
+            #ifdef CHOOSE_VSIDS
                 bump_activity(first_input.node());
                 bump_activity(second_input.node());
                 bump_activity(curr);
+            #endif
                 return;
             }
         }
@@ -570,15 +624,19 @@ void Solver::propogate_backward_helper(Node *curr) {
     }
 }
 
+// When conflict occurs during solving this:
+// Backtracks to the last decision level
+// Clears all assignments after last decision
+// Flip Decision and pushes back the node onto propagation queue (Try other branch)
+// If both branches have been exhausted then it prunes back the assignment list a decision level further back and so on
 bool Solver::conflict_handler() {
-    // Backtrack to last decision level
-    // Clear all assignments after last decision
-    // Flip Decision and push back onto propagation queue
     solver_conflicts++;
+#ifdef CHOOSE_VSIDS
     // Tweak this if necessary
     if (solver_conflicts % 100 == 0) {
         decay_every_N_conflicts();
     }
+#endif
     while (true) {
         if (solver_decision_level == 0 || decision_level_boundary_indexes.empty()) return false;
         backtrack();
@@ -607,6 +665,8 @@ bool Solver::conflict_handler() {
 
 }
 
+// Clears the assignment list, resets the nodes up until the last decision level
+// and then and clears the propagation queue
 inline void Solver::backtrack() {
     size_t stop = decision_level_boundary_indexes.back() + 1;
     while (assignment_list.size() > stop) {
@@ -618,11 +678,15 @@ inline void Solver::backtrack() {
     while (!propagation_queue.empty()) propagation_queue.pop();
 }
 
+// Increases the activity if a node is involved in a conflict (boosting its score so it is more likely to be
+// chosen next time round during VSIDS choosing)
 void Solver::bump_activity(Node *node) {
     if (node == nullptr) return;
     node->activity += solver_activity_increment;
 }
 
+// Lower activity of all nodes by some multiplier so the same nodes aren't dominating as they retain the highest
+// activity score
 void Solver::decay_every_N_conflicts() {
     for (int i = 0; i < nodes_list_size; i++) {
         if (nodes_list[i] != nullptr)
@@ -698,35 +762,46 @@ inline void Solver::total_valid_nodes_count() {
     }
 }
 
-int Solver::output_propogator_scorer(Node* node, Assignment assignment) {
+// Used by Phase Saving to select which side to branch a node on (assign True or False)
+// by scoring the propagations either assignment would have on the outputs
+int Solver::output_propagator_scorer(Node* node, Assignment assignment) {
     int score = 0;
     for (int i = 0; i < node->output_nodes.size(); i++) {
         Node* output_node = node->output_nodes[i];
         if (output_node->type != NodeType::AND) continue;
+        // Find which edge is the current node vs the other node to the AND gate
         Edge* curr_edge = (node == output_node->input_nodes[0].node()) ? &output_node->input_nodes[1] : &output_node->input_nodes[0];
         Edge* other_edge = (node == output_node->input_nodes[0].node()) ? &output_node->input_nodes[1] : &output_node->input_nodes[0];
 
         bool other_node_assigned = other_edge->node() == nullptr || other_edge->node()->assignment != Assignment::UNASSIGNED;
         bool other_node_true = other_edge->node() == nullptr ? other_edge->inverted() : (other_edge->node()->assignment == Assignment::TRUE) ^ other_edge->inverted();
-
         bool curr_node_actual_true = (assignment == Assignment::TRUE) ^ curr_edge->inverted();
 
         if (curr_node_actual_true) {
+            // AND gate would become True - high score
             if (other_node_assigned && other_node_true) score += 10;
+            // Other node is unassigned
             else if (!other_node_assigned) score += 5;
+            // Other node is assigned False
             else score += 1;
         }
         else {
+            // Current and output are False - high score
             if (output_node->assignment == Assignment::FALSE) score += 7;
+            // Can propagate output to be False
             else if (output_node->assignment == Assignment::UNASSIGNED) score += 4;
+            // Contradiction as AND is True - very bad
             else score -= 5;
         }
     }
     return score;
 }
 
+// Gives each node a depth from how far out they are from an output node
+// Performs BFS from the outputs using a queue
 void Solver::calculate_nodes_depth_from_output() {
     std::queue<Node*> queue;
+    // Add all outputs to queue and set their own depths
     for (const auto& output_edge : output_nodes) {
         Node* node = output_edge.node();
         if (node != nullptr && node->depth_from_out == -1) {
@@ -738,6 +813,8 @@ void Solver::calculate_nodes_depth_from_output() {
     while (!queue.empty()) {
         Node* node = queue.front();
         queue.pop();
+        // Look at nodes inputs and give them a depth +1 relative to the current node
+        // and push those back in to the queue
         for (const auto& edge : node->input_nodes) {
             Node* input = edge.node();
             if (input != nullptr && input->depth_from_out == -1) {

@@ -1,27 +1,12 @@
 import os
 import subprocess
 import re
-def parse_cadical_output(output):
-    data = {
-        "result": None,
-        "time": None
-    }
-    for line in output.splitlines():
-        line = line.strip()
-        if (line.startswith("s SATISFIABLE")):
-            data["result"] = "SAT"
-        elif (line.startswith("s UNSATISFIABLE")):
-            data["result"] = "UNSAT"
-        elif(line.startswith("c total process")):
-            match = re.search(r":\s*([0-9]*\.?[0-9]+)", line)
-            if match:
-                data["time"] = float(match.group(1))
-    return data
+
 def relative_path(*parts):
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), *parts)
 
 # ONLY EDIT AROUND THIS AREA --------------------------------------------------------------------------------------------
-# EDIT THIS TO CORRECT PATH
+# EDIT THIS TO CORRECT PATH DEPENDING ON THE SETUP YOU USE
 program        = relative_path("../src/cmake-build-release/./my_solver")
 # LOOK THROUGH BENCHMARKS IF YOU WANT TO TEST CHANGE THIS PATH TO THAT BENCHMARK (DO NOT PICK FROM SEQUENTIAL CIRCUITS)
 benchmark_file = relative_path("../Benchmarks/Bit-Blasted-SMTs/smtqfbv-aigs/mult_ub_8x8_1.sf.aig")
@@ -59,8 +44,8 @@ except subprocess.CalledProcessError as e:
 # MiniSAT
 """
 try:
-    abc_command = f'r {unrolled_aig}; sat'
-    subprocess.run([abc_path, "-c", abc_command], check=True, cwd=os.path.dirname(abc_path), timeout=15)
+    abc_command = f'r {benchmark_file}; sat'
+    subprocess.run([abc_path, "-c", abc_command], check=True, cwd=os.path.dirname(abc_path))
 except subprocess.CalledProcessError as e:
     print(f"ABC error: {e}")
 

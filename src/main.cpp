@@ -21,26 +21,28 @@ extern "C" {
 void printInternalAIG(Node* nodes_list[], std::vector<Edge>& outputs, unsigned maxvar) {
     for (int i = 1; i <= maxvar; i++) {
         Node* n = nodes_list[i];
-        if (!n) continue;
-        std::cout << "Node " << i << ": type = "
-             << (n->type == NodeType::INPUT ? "INPUT" : "AND") << "\n";
+        if (n == nullptr) continue;
+        // Print node type
+        std::cout << "Node " << i << ": type = " << (n->type == NodeType::INPUT ? "INPUT" : "AND") << "\n";
 
+        // Print node inputs if it's an AND gate and whether they're inverted or not
         if (n->type == NodeType::AND) {
             for (int j = 0; j < 2; j++) {
                 Edge& e = n->input_nodes[j];
-                std::cout << "  Input " << j << " -> Node " << e.node()->variable_number
-                          << (e.inverted() ? " (inverted)" : "") << "\n";
+                std::cout << "  Input " << j << " -> Node " << e.node()->variable_number << (e.inverted() ? " (inverted)" : "") << "\n";
             }
         }
 
+        // Skip if there are no outputs for this node
         if (n->output_nodes.size() <= 0) continue;
+        // Print the outputs for this node
         std::cout << "Outputs for this node: " << '\n';
         for (int k = 0; k <  n->output_nodes.size(); k++) {
             std::cout << "Node: " << n->output_nodes[k]->variable_number << '\n';
         }
     }
 
-
+    // Print all the outputs for the entire AIG and whether they are inverted or not
     for (int i = 0; i < outputs.size(); i++) {
         Edge& e = outputs[i];
         std::cout << "Output " << i << " -> ";
@@ -55,8 +57,10 @@ void printInternalAIG(Node* nodes_list[], std::vector<Edge>& outputs, unsigned m
 
 }
 Edge edge_from_literal(unsigned literal, Node* nodes_list[]) {
+    // Check if it is a constant literal (Just True or False) or not
     if (literal == 0) return {nullptr, false};
     if (literal == 1) return {nullptr, true};
+    // Assign by variable index by /2 via bitshift and check for inversion with mask on LSB
     return {nodes_list[literal >> 1], (literal & 1) != 0};
 }
 
@@ -70,7 +74,7 @@ int main(int argc, char **argv) {
         aiger_reset(aig);
         return 1;
     }
-    // Ensure no latches present (Script will manually unroll beforehand)
+    // Ensure no latches present (Script will manually unroll beforehand for sequential circuits being tested)
     if (aig->num_latches > 0) {
         std::cerr << "No latches allowed, unroll first";
         return 1;
@@ -90,12 +94,11 @@ int main(int argc, char **argv) {
     }
     */
 
-    //Node* nodes_list[aig->maxvar + 2];
-    //memset(nodes_list, 0, sizeof(nodes_list));
-    std::cout << NODE_ALIGNED_SIZE << '\n';
-    // Node Pointer memory
+
+    // Node Pointers memory
     Node** nodes_list = new Node*[aig->maxvar + 2];
     std::vector<Node*> input_nodes_list;
+    // Set memory for all the node pointers
     memset(nodes_list, 0, sizeof(Node*) * (aig->maxvar + 2));
 
     // AIG arena
@@ -119,6 +122,7 @@ int main(int argc, char **argv) {
     // add AND nodes to graph/circuit
     for (int i = 0; i < aig->num_ands; i++) {
         const aiger_and& and_node = aig->ands[i];
+        // Index of AND gate output
         const unsigned index = and_node.lhs >> 1;
 
         // Allocate memory and initialise node using the arena
@@ -130,9 +134,11 @@ int main(int argc, char **argv) {
         if (and_node.rhs0 > 0) assert(nodes_list[and_node.rhs0 >> 1] != nullptr);
         if (and_node.rhs1 > 0) assert(nodes_list[and_node.rhs1 >> 1] != nullptr);
 
+        // Add the 2 inputs to the AND gate as its inputs
         nodes_list[index]->input_nodes[0] = edge_from_literal(and_node.rhs0, nodes_list);
         nodes_list[index]->input_nodes[1] = edge_from_literal(and_node.rhs1, nodes_list);
 
+        // Add the AND gate as an output to the 2 inputs
         if (nodes_list[index]->input_nodes[0].node() != nullptr)
             nodes_list[index]->input_nodes[0].node()->output_nodes.push_back(nodes_list[index]);
         if (nodes_list[index]->input_nodes[1].node() != nullptr)
@@ -144,9 +150,11 @@ int main(int argc, char **argv) {
     for (int i = 0; i < aig->num_outputs; i++) {
         unsigned index = aig->outputs[i].lit >> 1;
         bool inverted = (aig->outputs[i].lit & 1) != 0;
-        // (Arena allocator will be used)
+
+        // Handle if output is a constant (True/False)
         if (aig->outputs[i].lit == 0) outputs.push_back(Edge(nullptr, false));
         else if (aig->outputs[i].lit == 1) outputs.push_back(Edge(nullptr, true));
+        // Create an edge by converting the AIGER index to our own via /2 and set it if it's inverted or not
         else {
             outputs.push_back(Edge(nodes_list[aig->outputs[i].lit >> 1], (aig->outputs[i].lit & 1) != 0));
         }
@@ -155,6 +163,7 @@ int main(int argc, char **argv) {
     // print structure of AIG to ensure it is correct
     //printInternalAIG(nodes_list, outputs, aig->maxvar);
 
+    // Setup Solver and its internals
     Solver Solver;
     Solver.nodes_list_size = aig->maxvar+2;
     Solver.nodes_list = nodes_list;
@@ -162,16 +171,16 @@ int main(int argc, char **argv) {
     Solver.input_nodes = input_nodes_list;
 
     std::string benchmark_file_name = argv[1];
+    // Remove path name from benchmark file so it only includes the actual name
     benchmark_file_name.erase(0, 57);
     std::cout << "BENCHMARK: " << benchmark_file_name << '\n';
-    std::cout << "Size of Node struct: " << sizeof(Node) << '\n';
-    std::cout << "TOTAL NODES: " << aig->maxvar+2 << '\n';
-    // track time
+    //std::cout << "Size of Node struct: " << sizeof(Node) << '\n';
+    //std::cout << "TOTAL NODES: " << aig->maxvar+2 << '\n';
+    std::cout << "Solving..." << '\n';
+    // Track time
     std::chrono::time_point<std::chrono::system_clock> start_time = std::chrono::system_clock::now();
 
     Solver.run();
-    //CDCL_Solver.run();
-
 
     std::chrono::time_point<std::chrono::system_clock> end_time = std::chrono::system_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
@@ -182,13 +191,14 @@ int main(int argc, char **argv) {
     std::cout << "TOTAL PROPAGATIONS: " << Solver.solver_propagations << '\n';
 
 
-
+    // This freeing is largely unnecessary as solver immediately exits and the OS reclaims all memory
     // Cleanup node as it has internal vector
     for (int i = 0 ; i < aig->maxvar+2; i++) {
         if (nodes_list[i] != nullptr) {
             nodes_list[i]->~Node();
         }
     }
+    // Free arena, other memory and reset aiger struct
     free(arena_buffer);
     delete[] nodes_list;
     aiger_reset(aig);

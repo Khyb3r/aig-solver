@@ -4,7 +4,7 @@ This is a Non-Clausal SAT Solver for the AIG representation.
 ## Folder Structure
 
 - /src contains all Solver source code as well as other things explained below.
-    - /Solver folder contains actual solver specific source code in the .h and .cpp files.
+    - /Solver folder contains actual solver specific source code in the Solver.cpp and Solver.h files.
     - main.cpp (where the program starts to run from main())
     - aig.h (header file with the node structure of the AIG)
     - Arena.h (header file with the Arena Allocator code, all within the header file because it is templated)
@@ -22,7 +22,7 @@ This is a Non-Clausal SAT Solver for the AIG representation.
 
 - /Scripts contains all the Python scripts for testing and experimentation.
     - single-run.py used for experimentation to run a single benchmark instance
-    - group-run.py used to actually run a set on all solvers and record the results in /logs.
+    - group-run-and-log.py used to actually run a set on all solvers and record the results in /logs.
 
 - /logs contains log folders for each run which have raw .log files within and a .json per run on a set of benchmarks.
     - Look at the naming of each subfolder within to see the actual json and raw .log files (naming should be self explanatory for what was being tested).
@@ -41,18 +41,19 @@ Make sure you have the following installed:
 - This project relies on the AIGER library.
 
 #### The AIGER Library - AIGER has been self-contained into the project itself via 'aiger.c' and 'aiger.h' so there is no need to reinstall it
-Note: If there are any issues go to "https://github.com/arminbiere/aiger" and look at how to install the library within its README.md and update the project structure correctly by 
+Note: If there are any issues go to "https://github.com/arminbiere/aiger" and look at how to install the library within its README.md and update the project structure by 
 moving in the "aiger.c" and "aiger.h" files into the src/ folder so you can correctly use it.
 
 ## Building and Running
+The Terminal Version is preferred.
 ### Terminal Version
 Follow these instructions to compile the solver:
 - Go to the project root 'aig-solver' folder: cd aig-solver
 - Go to the 'src' folder: cd src
 - Create a 'build' folder: mkdir build
 - Go to the 'build' folder: cd build
-- Use Cmake here: cmake .. -DCMAKE_BUILD_TYPE=Release
-- Use make here: make
+- Call cmake here: cmake .. -DCMAKE_BUILD_TYPE=Release
+- Call make here: make
 - Now you have the 'my_solver' binary
 Note: Cmake must be run from src/build directory
 
@@ -74,5 +75,3 @@ Steps:
 To run the solver on a benchmark instance, go to project root 'aig-solver': cd aig-solver
 Go to the 'Scripts' folder: cd Scripts
 Run it with: python3 ./single-run.py
-
-### NOTE: DO NOT RUN 'group-run.py' IT WILL OVERWRITE LOGS AND .JSON RESULTS.

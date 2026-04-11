@@ -40,9 +40,9 @@ public:
     void preprocess();
     bool run();
     Node* decide_node();
-    void propogate(Node*);
-    void propogate_forward_helper(Node*);
-    void propogate_backward_helper(Node*);
+    void propagate(Node*);
+    void propagate_forward_helper(Node*);
+    void propagate_backward_helper(Node*);
     bool conflict_handler();
     inline void backtrack();
 
@@ -63,7 +63,7 @@ public:
     inline void always_branch_true(Node*);
     inline void always_branch_false(Node*);
     inline void phase_saving(Node*);
-    int output_propogator_scorer(Node*, Assignment);
+    int output_propagator_scorer(Node*, Assignment);
 
     void print_stats();
     void print_preprocess_stats();

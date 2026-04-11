@@ -33,11 +33,12 @@ def parse_minisat_output(output):
         line = line.strip()
         if (line.startswith("SATISFIABLE")):
             data["result"] = "SAT"
+            parts = line.split()
+            data["time"] = float(parts[6])
         elif (line.startswith("UNSATISFIABLE")):
             data["result"] = "UNSAT"
-        match = re.search(r"Time\s*=\s*([0-9]*\.?[0-9]+)", line)
-        if match:
-            data["time"] = float(match.group(1))
+            parts = line.split()
+            data["time"] = float(parts[6])
     return data
 
 def parse_preprocessing_output(output):
@@ -81,9 +82,8 @@ def parse_cadical_output(output):
         elif (line.startswith("s UNSATISFIABLE")):
             data["result"] = "UNSAT"
         elif(line.startswith("c total process")):
-            match = re.search(r":\s*([0-9]*\.?[0-9]+)", line)
-            if match:
-                data["time"] = float(match.group(1))
+            parts = line.split()
+            data["time"] = float(parts[6])
     return data
 
 #benchmarks_path = relative_path("../Benchmarks/Structural-SAT-All-UNSAT/tip-k-ind-aigs-o1234g/O1")
